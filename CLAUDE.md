@@ -7,7 +7,11 @@ PromptCorn: chatbot de recomendación de películas (workflow agéntico Nivel 3)
 
 - Contexto completo: [docs/contexto.md](docs/contexto.md)
 - Datos y consolidación: [docs/datos.md](docs/datos.md)
+- Equipo y división del trabajo: [docs/equipo.md](docs/equipo.md)
 - Status y TODOs: [docs/status.md](docs/status.md). **Actualízalo al terminar una tarea.**
+
+## Rol
+El usuario es la **Persona A**: datos, modelo de ML, herramientas del backend y este repo (dueño de `/ml`, `/tools`, `/scripts`). La Persona B lleva el chat (`/chat`), el frontend (repo aparte) y la Parte A. No editar lo de B; el punto de contacto son los contratos JSON de las herramientas. Recursos AWS de A con prefijo `promptcorn-tools-`.
 
 ## Reglas
 - **El repo es público.** Nunca subir llaves (Groq, TMDB, AWS), `.env`, ni datos crudos o enriquecidos (`data/` está en `.gitignore`). Las llaves van en SSM Parameter Store.

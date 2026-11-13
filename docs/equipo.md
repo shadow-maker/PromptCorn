@@ -1,0 +1,61 @@
+# Equipo y división del trabajo
+
+Dos integrantes, división por capas. **El único punto de contacto son los contratos JSON de las herramientas** (qué recibe y qué devuelve cada una).
+
+> Este repo (`PromptCorn`) es el **repo del backend** y lo mantiene la Persona A. El frontend vive en un repo aparte de la Persona B.
+
+## Persona A: datos, modelo de ML y herramientas del backend
+
+- **Dataset:** descarga, limpieza y consolidación del catálogo (hecho: ver [datos.md](datos.md)).
+- **Modelo de ML:** vectores de similitud entre películas calculados offline (SVD sobre la matriz de calificaciones) y la API de ML (`/recomendar`), que en producción solo usa numpy.
+- **Herramientas que invoca el chat** (borrador, nombres y formatos no definitivos):
+
+| Herramienta | Recibe | Devuelve |
+|---|---|---|
+| `recomendar` | películas calificadas por el usuario (id y calificación), filtros opcionales (géneros, duración máx., año), plataformas del usuario, títulos a excluir, cantidad | lista ordenada de candidatas (id, título, año, afinidad) |
+| `buscar_pelicula` | texto y año opcional | coincidencias (id, título, año, sinopsis breve, póster); varias si es ambiguo |
+| `ver_donde_ver` | id de película (región PE) | plataformas de suscripción donde está |
+| `registrar_vista` | id, calificación opcional, estado (`visto` / `no_me_interesa`) | confirmación |
+| `guardar_plataformas` | plataformas (agregar, quitar o reemplazar) | perfil actualizado |
+| `obtener_historial` | — | recomendaciones pasadas con fecha y plataforma |
+
+- **Tablas DynamoDB propias:** `Vistas`, `Perfil`, `Recomendaciones` (y `Peliculas`, si se adopta la propuesta de [datos.md](datos.md#uso-en-aws-propuesta-aún-no-conectado)).
+- **Entregables:** colección de Postman (Parte C backend), diagrama de arquitectura AWS, región y su sustento, costos con calculator.aws (Parte B), README del backend con script o notebook de entrenamiento.
+- **Pruebas:** escenarios Gherkin HU1–HU4.
+
+## Persona B: conversación, frontend y documentación de producto
+
+- **Lambda del chat** (orquestador): prompt del sistema, tool calling con Groq, memoria en la tabla `Conversaciones` (de B).
+- **Frontend:** prototipo del chat web (Lovable o Figma Make) conectado a la API real.
+- **Documentación:** Parte A completa (benchmark, historias de usuario, propuesta de valor, MVP); en la Parte B, el frontend y la descripción del workflow y las APIs.
+- **Pruebas:** README del frontend y escenarios Gherkin HU5–HU8.
+
+## Reglas para no bloquearse
+
+- **Contratos primero.** B desarrolla contra simulaciones que devuelven un JSON fijo; A construye las versiones reales; se cambian las URLs por variables de entorno.
+- **Propiedad de carpetas.** A es dueño de `/ml` y `/tools` (y de este repo); B de `/chat` y del repo del frontend. Cada uno en su rama, integración por pull request, sin editar lo del otro.
+- **Una sola cuenta AWS con prefijos:** `promptcorn-tools-...` (A) y `promptcorn-chat-...` (B).
+- **Secretos** (Groq, TMDB) en SSM Parameter Store. Nada de llaves ni datos en los repos públicos.
+- **Sincronización** de 15 minutos al mediodía y en la noche: qué está listo y qué falta.
+
+## Plan por días (referencial)
+
+| Día | Persona A | Persona B |
+|---|---|---|
+| Mié 11 | Dataset limpio, vectores, tablas DynamoDB | Contratos (con A), prototipo del frontend con datos simulados, Parte A |
+| Jue 12 | `/recomendar` y herramientas de TMDB desplegadas | Lambda del chat con herramientas simuladas y memoria |
+| Vie 13 | Herramientas de datos y colección Postman. **2 pm asesoría (ambos)** | Cambia simulaciones por herramientas reales, conecta el frontend |
+| Sáb 14 | Integración conjunta (mañana); pruebas HU1–HU4 | Integración; pruebas HU5–HU8, ajuste del prompt |
+| Dom 15 | Diagrama, región y costos | Parte B y pulido de la interfaz |
+| Lun 16 | Evidencia Postman, README del backend | README del frontend; revisión cruzada |
+| Mar 17 | **Entrega (23:59)** y ensayo | Entrega y ensayo |
+| Mié 18 | Exposición 19h | Exposición 19h |
+
+El estado real lo indica la Persona A cuando haga falta; ver [status.md](status.md).
+
+## Puntos abiertos que tocan a la Persona A
+
+- **¿Quién escribe en `Recomendaciones`?** Propuesta: `recomendar` guarda cada recomendación entregada. Sin confirmar.
+- **¿Quién aplica el filtro por disponibilidad?** Propuesta: `recomendar` devuelve solo títulos disponibles en las plataformas del usuario. Sin confirmar. (El catálogo ya trae un snapshot de plataformas en Perú, así que el filtro puede hacerse en memoria sin consultar TMDB por cada candidato.)
+- **ID de película en los contratos.** El borrador usa `tmdbId`/`movieId`, pero el catálogo consolidado tiene un **ID propio** (`id`). Propuesta: los contratos y las tablas usan ese `id`; la traducción a la referencia externa queda dentro de las herramientas de A. Acordar con B.
+- Contratos JSON definitivos, región de AWS, lenguaje de las Lambdas y herramienta de despliegue: por definir.

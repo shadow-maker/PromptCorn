@@ -77,6 +77,18 @@ No forma parte del dataset. Solo existe porque dos herramientas consultan en viv
 | Sinopsis sin notas de procedencia ("(Tomado de la página imdb)") | — |
 | Columnas redundantes eliminadas: año dentro del título, fecha exacta, promedios duplicados, IDs de origen, tags | — |
 
+## Compartir con la Persona B
+
+El paquete `data/compartir/promptcorn_datos_<fecha>.zip` (no versionado) se comparte por Google Drive, con acceso restringido al equipo. Contiene:
+
+| Archivo | Para qué le sirve a B |
+|---|---|
+| `peliculas.csv` / `peliculas.json` | Simulaciones realistas de las herramientas y pruebas del frontend (pósters, sinopsis) |
+| `plataformas.csv` | Nombres canónicos de plataformas (prompt del sistema, `guardar_plataformas`) |
+| `LEEME.md` | Columnas, ID, URL de pósters, géneros, limitaciones, créditos obligatorios |
+
+No se comparten: `calificaciones` (solo las usa el modelo de ML, de A), `_interno/ids_externos.csv` (detalle interno de las herramientas de A) ni los datos crudos.
+
 ## Uso en AWS (propuesta, aún no conectado)
 
 | Data | Dónde | Quién la usa |
