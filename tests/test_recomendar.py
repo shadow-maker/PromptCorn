@@ -161,6 +161,12 @@ class TestHandler(unittest.TestCase):
             self.assertEqual(r["statusCode"], 400)
             r = handler.lambda_handler({"cantidad": 0}, None)  # invocación directa
             self.assertEqual(r["status"], 400)
+            # por HTTP no se puede elegir otro usuario
+            vistos = []
+            handler._almacen.vistas_de = lambda u: vistos.append(u) or []
+            handler.lambda_handler({"body": json.dumps({"usuario_id": "otro", "guardar": False})}, None)
+            handler.lambda_handler({"usuario_id": "otro", "guardar": False}, None)
+            self.assertEqual(vistos, [handler.USUARIO, "otro"])
         finally:
             handler._almacen = None
 

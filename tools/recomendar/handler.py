@@ -241,6 +241,8 @@ def lambda_handler(event, context):
             body = event or {}
         if not isinstance(body, dict):
             raise ErrorEntrada("El request debe ser un objeto JSON.")
+        if via_api:  # por HTTP no hay autenticación: nadie elige el usuario, siempre es USUARIO_ID
+            body.pop("usuario_id", None)
         _almacen = _almacen or AlmacenDynamo()
         estado, respuesta = 200, recomendar(body, _almacen)
     except ErrorEntrada as e:

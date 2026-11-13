@@ -25,7 +25,7 @@ Punto de contacto entre el chat (B) y el backend (A). Las películas se identifi
 | `parecido_a` | int | `id` de una película: modo "parecidas a X" |
 | `excluir` | list[int] | Ids que no deben salir (además de los que se excluyen solos) |
 | `guardar` | bool | Guardar en `Recomendaciones` (por defecto `true`; `false` para pruebas) |
-| `usuario_id` | str | Solo para pruebas; por defecto el usuario fijo de la app |
+| `usuario_id` | str | Solo en invocación directa (pruebas). Por API Gateway se ignora: siempre es el usuario fijo de la app (`USUARIO_ID`), porque la API no tiene autenticación |
 
 **Se excluyen solas:** las películas vistas, las marcadas "no me interesa", las recomendadas en las últimas 24 h y las que no están en ninguna plataforma de Perú.
 
