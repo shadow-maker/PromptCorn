@@ -9,7 +9,7 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 | # | Etapa | Responsable | Estado |
 |---|---|---|---|
 | 0 | Fundaciones (repo, datos, llaves, accesos, contratos) | A+B | 🟡 En curso |
-| 1 | Modelo de ML y `/recomendar` | A | 🟡 En curso (modelo entrenado y evaluado; falta la Lambda) |
+| 1 | Modelo de ML y `/recomendar` | A | 🟢 Código listo; falta desplegar en AWS ([guía](despliegue.md)) |
 | 2 | Tablas DynamoDB y herramientas | A | ⚪ Pendiente |
 | 3 | Lambda del chat con Groq | B | ❔ A confirmar con B |
 | 4 | Frontend | B | ❔ A confirmar con B |
@@ -36,10 +36,13 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - [x] Entrenar vectores de similitud (SVD k=64) offline: `ml/entrenar.py` → `ml/artefactos/` ([modelo.md](modelo.md)).
 - [x] Evaluación (split temporal por usuario): Recall@10 0.182 vs 0.125 del baseline "lo más visto" (+46 %).
 - [x] Núcleo del recomendador (`tools/recomendar/recomendador.py`): filtros, perfil, "parecida a X", arranque en frío, motivo.
-- [ ] Lambda `/recomendar`: `handler.py` (lee artefactos de S3 y `Vistas`/`Recomendaciones` de DynamoDB), layer de numpy y guía de despliegue.
+- [x] Lambda `/recomendar`: `handler.py` (artefactos de S3; lee `Vistas`, `Perfil` y `Recomendaciones`; guarda lo entregado), pruebas, `empaquetar.sh` (zip + layer de numpy) y eventos de prueba.
+- [x] Contrato de `recomendar` y esquema de las tablas ([contratos.md](contratos.md)).
+- [ ] (A+B) Desplegar en Learner Lab siguiendo [despliegue.md](despliegue.md): S3, 3 tablas, layer, Lambda, API Gateway.
+- [ ] Pasarle a B la URL de `/recomendar` y el contrato.
 
 ## Etapa 2: Tablas y herramientas (A)
-- [ ] Tablas DynamoDB: `Vistas`, `Perfil`, `Recomendaciones` (+ `Peliculas` si se adopta).
+- [ ] Tablas DynamoDB: `Vistas`, `Perfil`, `Recomendaciones` (esquema definido en [contratos.md](contratos.md); se crean con la guía de despliegue) (+ `Peliculas` si se adopta).
 - [ ] Herramientas en `/tools`: `recomendar`, `buscar_pelicula`, `ver_donde_ver`, `registrar_vista`, `guardar_plataformas`, `obtener_historial`.
 - [ ] Token de TMDB en SSM Parameter Store (SecureString).
 - [ ] Colección de Postman con evidencia de cada herramienta.
@@ -73,11 +76,10 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - Contratos JSON de las herramientas.
 - `id` para películas fuera del catálogo (posteriores a 2018) encontradas en vivo.
 - Versión de Python de las Lambdas (3.13 o 3.14).
-- ¿Quién escribe en `Recomendaciones`? ¿Quién filtra por disponibilidad? (propuesta: `recomendar` en ambos casos).
-- ¿`recomendar` lee las notas de `Vistas` por su cuenta (propuesta) o las recibe en el request?
 - Detalle del híbrido filtros del LLM + ranking del ML.
 - Arquitectura de datos en AWS (propuesta en [datos.md](datos.md#uso-en-aws-propuesta-aún-no-conectado)): DynamoDB `Peliculas` para consultas por llave.
 
 ## Decisiones tomadas
 - Artefactos del modelo (vectores + catálogo del modelo) en **S3**; la Lambda los carga al arrancar.
 - `recomendar` excluye lo ya recomendado **en el último día** (para que "dame otras opciones" traiga títulos nuevos).
+- `recomendar` lee por su cuenta las notas (`Vistas`) y las plataformas (`Perfil`), filtra por disponibilidad en Perú y guarda lo entregado en `Recomendaciones`. El chat solo manda filtros. Falta avisarle a B.

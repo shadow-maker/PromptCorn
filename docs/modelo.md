@@ -8,6 +8,8 @@ Filtrado colaborativo **item-item** con SVD. Offline se aprende un vector por pe
 |---|---|
 | `ml/entrenar.py` | Filtra, centra, factoriza (SVD), evalúa la grilla de configuraciones y exporta los artefactos |
 | `tools/recomendar/recomendador.py` | Núcleo puro (filtros, perfil, puntaje, motivo). Lo usan la Lambda **y** la evaluación: lo medido es lo que corre en producción |
+| `tools/recomendar/handler.py` | Lambda `/recomendar`: carga el modelo de S3 y lee/escribe DynamoDB. Contrato en [contratos.md](contratos.md); despliegue en [despliegue.md](despliegue.md) |
+| `tests/test_recomendar.py` | Pruebas del núcleo, del handler (almacén en memoria) y del modelo real |
 | `ml/metricas.json` | Resultados de la evaluación (versionado, para el informe) |
 | `ml/artefactos/` | `vectores.npy`, `catalogo_ml.json`, `meta.json`. No versionado; se sube a S3 |
 
@@ -63,7 +65,7 @@ Limitaciones (para el informe):
 | Artefacto | Contenido | Tamaño |
 |---|---|---|
 | `vectores.npy` | 3,641 × 64 float32, fila i ↔ `catalogo_ml[i]` | ~0.9 MB |
-| `catalogo_ml.json` | id, título, año, duración, géneros, plataformas, popularidad, calidad | ~0.6 MB |
+| `catalogo_ml.json` | id, título, año, duración, géneros, plataformas, sinopsis corta, póster, popularidad, calidad | ~1.8 MB |
 | `meta.json` | k, prior, peso, umbral, fecha, conteos | — |
 
 Van a **S3** (decidido). La Lambda los carga al arrancar y los mantiene en memoria. Reentrenar = correr el script y volver a subir los tres archivos, sin redesplegar la Lambda.

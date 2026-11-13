@@ -23,11 +23,18 @@ Registro de plataformas · recomendación conversacional · filtro por disponibi
 ## Estructura
 ```
 docs/
-  contexto.md   Enunciado, propuesta, diseño, historias de usuario
-  datos.md      Fuentes de datos y plan de consolidación
-  status.md     Avance y TODOs
-scripts/        descarga de datos y consolidación del catálogo
-data/           (no versionado) datos descargados y procesados
+  contexto.md     Enunciado, propuesta, diseño, historias de usuario
+  datos.md        Fuentes de datos y consolidación del catálogo
+  modelo.md       Modelo de ML: diseño, evaluación, artefactos
+  contratos.md    Contratos JSON de las herramientas y tablas DynamoDB
+  despliegue.md   Guía de despliegue manual en AWS (Learner Lab)
+  equipo.md       División del trabajo
+  status.md       Avance y TODOs
+scripts/          descarga de datos y consolidación del catálogo
+ml/               entrenamiento y evaluación del modelo (entrenar.py, metricas.json)
+tools/recomendar/ Lambda /recomendar (handler.py, recomendador.py, empaquetar.sh, eventos/)
+tests/            pruebas (python -m unittest discover -s tests)
+data/, dist/      (no versionados) datos y paquetes para AWS
 ```
 
 ## Estado

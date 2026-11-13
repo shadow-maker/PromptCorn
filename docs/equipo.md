@@ -12,7 +12,7 @@ Dos integrantes, división por capas. **El único punto de contacto son los cont
 
 | Herramienta | Recibe | Devuelve |
 |---|---|---|
-| `recomendar` | películas calificadas por el usuario (id y calificación), filtros opcionales (géneros, duración máx., año), plataformas del usuario, títulos a excluir, cantidad | lista ordenada de candidatas (id, título, año, afinidad) |
+| `recomendar` ✅ | filtros opcionales (géneros, duración máx., años, plataformas, parecida a X, excluir), cantidad. Las notas y plataformas las lee él mismo de las tablas | candidatas con id, título, año, plataformas, géneros, sinopsis, póster, afinidad y motivo. **Contrato final en [contratos.md](contratos.md)** |
 | `buscar_pelicula` | texto y año opcional | coincidencias (id, título, año, sinopsis breve, póster); varias si es ambiguo |
 | `ver_donde_ver` | id de película (región PE) | plataformas de suscripción donde está |
 | `registrar_vista` | id, calificación opcional, estado (`visto` / `no_me_interesa`) | confirmación |
@@ -55,9 +55,7 @@ El estado real lo indica la Persona A cuando haga falta; ver [status.md](status.
 
 ## Puntos abiertos que tocan a la Persona A
 
-- **¿Quién escribe en `Recomendaciones`?** Propuesta: `recomendar` guarda cada recomendación entregada y excluye lo recomendado en el último día (decidido). Sin confirmar con B.
-- **¿De dónde salen las notas del usuario?** Propuesta: `recomendar` las lee de `Vistas` por su cuenta (el chat no las reenvía y el LLM no gasta tokens en la lista). Cambia el contrato del borrador. A confirmar con B.
-- **¿Quién aplica el filtro por disponibilidad?** Propuesta: `recomendar` devuelve solo títulos disponibles en las plataformas del usuario. Sin confirmar. (El catálogo ya trae un snapshot de plataformas en Perú, así que el filtro puede hacerse en memoria sin consultar TMDB por cada candidato.)
+- ~~Recomendaciones, notas y disponibilidad~~ **Decidido (A), falta avisarle a B:** `recomendar` lee las notas de `Vistas` y las plataformas de `Perfil` por su cuenta, filtra por disponibilidad en Perú (snapshot en memoria), guarda lo entregado en `Recomendaciones` y no repite lo recomendado en las últimas 24 h. El chat solo traduce el pedido a filtros ([contratos.md](contratos.md)).
 - ~~ID de película~~ **Decidido:** contratos y tablas usan solo el `id` propio del catálogo; nunca IDs de las fuentes. Películas fuera del catálogo (p. ej. posteriores a 2018): propuesta, **no se agregan**; `buscar_pelicula` las identifica en vivo pero las marca `en_catalogo: false` y el bot lo explica de forma amable (coincide con HU8, "título no encontrado"). A confirmar con B.
 - ~~Región~~ **Decidido:** us-east-1.
 - ~~Despliegue~~ **Decidido:** cuenta AWS Academy (Learner Lab). El equipo despliega **a mano** desde la consola usando el código del repo; los agentes de IA no tocan AWS. Roles: `LabRole`.

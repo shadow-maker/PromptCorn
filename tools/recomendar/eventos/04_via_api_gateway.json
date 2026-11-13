@@ -1,0 +1,4 @@
+{
+  "body": "{\"cantidad\": 2, \"generos\": [\"Terror\"]}",
+  "requestContext": {"http": {"method": "POST"}}
+}

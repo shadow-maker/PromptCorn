@@ -73,12 +73,20 @@ def popularidad(pel: pd.DataFrame, cal: pd.DataFrame) -> np.ndarray:
     return n / n.max()
 
 
+def resumir(texto, maximo: int = 300) -> str | None:
+    """Sinopsis corta para la respuesta de la API (corta en la última palabra completa)."""
+    if not isinstance(texto, str) or not texto:
+        return None
+    return texto if len(texto) <= maximo else texto[:maximo].rsplit(" ", 1)[0].rstrip(",.;:") + "…"
+
+
 def catalogo_ml(pel: pd.DataFrame, cal: pd.DataFrame) -> list[dict]:
     """Catálogo del modelo: solo lo que la Lambda necesita para filtrar, rankear y responder."""
     return [
         {"id": int(r.id), "titulo": r.titulo, "anio": None if pd.isna(r.anio) else int(r.anio),
          "duracion_min": None if pd.isna(r.duracion_min) else int(r.duracion_min),
          "generos": list(r.generos), "plataformas": list(r.plataformas),
+         "sinopsis": resumir(r.sinopsis), "poster": r.poster if isinstance(r.poster, str) else None,
          "popularidad": round(float(pop), 4), "calidad": round(float(q), 4)}
         for r, pop, q in zip(pel.itertuples(), popularidad(pel, cal), calidad(pel))
     ]

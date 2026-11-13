@@ -15,6 +15,7 @@ import numpy as np
 NOTA_NEUTRA = 3.0          # un 3 no aporta; un 5 suma +2; un 1 resta -2
 PESO_NO_ME_INTERESA = -1.0  # "no me interesa" resta como una nota de 2
 PESO_PARECIDO = 0.8         # peso de la afinidad en el modo "parecida a X"
+CAMPOS_EXTRA = ("generos", "duracion_min", "sinopsis", "poster")  # se copian a la respuesta si existen
 
 
 class Recomendador:
@@ -74,9 +75,20 @@ class Recomendador:
 
     # ---------- filtros ----------
 
+    @property
+    def generos_validos(self) -> list[str]:
+        return list(self._generos)
+
+    @property
+    def plataformas_validas(self) -> list[str]:
+        return list(self._plataformas)
+
     def mascara(self, excluir=(), generos=None, duracion_max=None, anio_min=None, anio_max=None,
-                plataformas=None) -> np.ndarray:
+                plataformas=None, solo_disponibles=False) -> np.ndarray:
+        """Filtros duros. plataformas: al menos una en común. solo_disponibles: en alguna plataforma de Perú."""
         ok = np.ones(len(self.catalogo), dtype=bool)
+        if solo_disponibles:
+            ok &= self.P.any(axis=1)
         filas = [self.fila[p] for p in excluir if p in self.fila]
         ok[filas] = False
         if generos:
@@ -102,7 +114,7 @@ class Recomendador:
         notas: {id: calificación 0.5..5} de lo que el usuario vio y calificó.
         descartadas: ids marcados "no me interesa" (se excluyen y restan en el perfil).
         excluir: ids que no deben salir (vistas sin nota, recomendadas hace poco...).
-        filtros: generos, duracion_max, anio_min, anio_max, plataformas.
+        filtros: generos, duracion_max, anio_min, anio_max, plataformas, solo_disponibles.
         """
         notas = notas or {}
         if parecido_a is not None and parecido_a in self.fila:
@@ -122,6 +134,7 @@ class Recomendador:
     def _resultado(self, j: int, pesos: dict[int, float], afinidad, notas) -> dict:
         p = self.catalogo[j]
         out = {"id": p["id"], "titulo": p["titulo"], "anio": p.get("anio"), "plataformas": p["plataformas"],
+               **{c: p[c] for c in CAMPOS_EXTRA if c in p},
                "afinidad": None if afinidad is None else round(float(afinidad[j]), 3), "motivo": None}
         if pesos:
             filas = np.fromiter(pesos.keys(), dtype=int)

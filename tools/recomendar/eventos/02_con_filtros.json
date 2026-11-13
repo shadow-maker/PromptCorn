@@ -1,0 +1,6 @@
+{
+  "cantidad": 3,
+  "generos": ["Comedia", "Animación"],
+  "duracion_max": 110,
+  "anio_min": 1995
+}
