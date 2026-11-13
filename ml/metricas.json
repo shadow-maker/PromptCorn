@@ -1,0 +1,297 @@
+{
+  "config": {
+    "min_notas": 5,
+    "fraccion_test": 0.2,
+    "relevante": 4.0,
+    "top": 10,
+    "split": "temporal por usuario",
+    "peliculas_eval": 3105
+  },
+  "elegido": {
+    "k": 64,
+    "prior": "popularidad",
+    "peso_afinidad": 0.5,
+    "hit_rate@10": 0.5914,
+    "recall@10": 0.1822,
+    "usuarios": 602
+  },
+  "resultados": {
+    "baseline_popularidad": {
+      "hit_rate@10": 0.485,
+      "recall@10": 0.1251,
+      "usuarios": 602
+    },
+    "baseline_calidad": {
+      "hit_rate@10": 0.3937,
+      "recall@10": 0.0907,
+      "usuarios": 602
+    },
+    "svd_k16_popularidad_w1.0": {
+      "k": 16,
+      "prior": "popularidad",
+      "peso_afinidad": 1.0,
+      "hit_rate@10": 0.3904,
+      "recall@10": 0.0851,
+      "usuarios": 602
+    },
+    "svd_k16_popularidad_w0.7": {
+      "k": 16,
+      "prior": "popularidad",
+      "peso_afinidad": 0.7,
+      "hit_rate@10": 0.4967,
+      "recall@10": 0.1287,
+      "usuarios": 602
+    },
+    "svd_k16_popularidad_w0.5": {
+      "k": 16,
+      "prior": "popularidad",
+      "peso_afinidad": 0.5,
+      "hit_rate@10": 0.5648,
+      "recall@10": 0.1594,
+      "usuarios": 602
+    },
+    "svd_k16_popularidad_w0.3": {
+      "k": 16,
+      "prior": "popularidad",
+      "peso_afinidad": 0.3,
+      "hit_rate@10": 0.5698,
+      "recall@10": 0.1674,
+      "usuarios": 602
+    },
+    "svd_k16_calidad_w1.0": {
+      "k": 16,
+      "prior": "calidad",
+      "peso_afinidad": 1.0,
+      "hit_rate@10": 0.3904,
+      "recall@10": 0.0851,
+      "usuarios": 602
+    },
+    "svd_k16_calidad_w0.7": {
+      "k": 16,
+      "prior": "calidad",
+      "peso_afinidad": 0.7,
+      "hit_rate@10": 0.4551,
+      "recall@10": 0.1141,
+      "usuarios": 602
+    },
+    "svd_k16_calidad_w0.5": {
+      "k": 16,
+      "prior": "calidad",
+      "peso_afinidad": 0.5,
+      "hit_rate@10": 0.4934,
+      "recall@10": 0.1349,
+      "usuarios": 602
+    },
+    "svd_k16_calidad_w0.3": {
+      "k": 16,
+      "prior": "calidad",
+      "peso_afinidad": 0.3,
+      "hit_rate@10": 0.5017,
+      "recall@10": 0.1345,
+      "usuarios": 602
+    },
+    "svd_k32_popularidad_w1.0": {
+      "k": 32,
+      "prior": "popularidad",
+      "peso_afinidad": 1.0,
+      "hit_rate@10": 0.4551,
+      "recall@10": 0.1143,
+      "usuarios": 602
+    },
+    "svd_k32_popularidad_w0.7": {
+      "k": 32,
+      "prior": "popularidad",
+      "peso_afinidad": 0.7,
+      "hit_rate@10": 0.5365,
+      "recall@10": 0.1513,
+      "usuarios": 602
+    },
+    "svd_k32_popularidad_w0.5": {
+      "k": 32,
+      "prior": "popularidad",
+      "peso_afinidad": 0.5,
+      "hit_rate@10": 0.588,
+      "recall@10": 0.1755,
+      "usuarios": 602
+    },
+    "svd_k32_popularidad_w0.3": {
+      "k": 32,
+      "prior": "popularidad",
+      "peso_afinidad": 0.3,
+      "hit_rate@10": 0.5831,
+      "recall@10": 0.1769,
+      "usuarios": 602
+    },
+    "svd_k32_calidad_w1.0": {
+      "k": 32,
+      "prior": "calidad",
+      "peso_afinidad": 1.0,
+      "hit_rate@10": 0.4551,
+      "recall@10": 0.1143,
+      "usuarios": 602
+    },
+    "svd_k32_calidad_w0.7": {
+      "k": 32,
+      "prior": "calidad",
+      "peso_afinidad": 0.7,
+      "hit_rate@10": 0.51,
+      "recall@10": 0.139,
+      "usuarios": 602
+    },
+    "svd_k32_calidad_w0.5": {
+      "k": 32,
+      "prior": "calidad",
+      "peso_afinidad": 0.5,
+      "hit_rate@10": 0.5183,
+      "recall@10": 0.1438,
+      "usuarios": 602
+    },
+    "svd_k32_calidad_w0.3": {
+      "k": 32,
+      "prior": "calidad",
+      "peso_afinidad": 0.3,
+      "hit_rate@10": 0.4983,
+      "recall@10": 0.1325,
+      "usuarios": 602
+    },
+    "svd_k64_popularidad_w1.0": {
+      "k": 64,
+      "prior": "popularidad",
+      "peso_afinidad": 1.0,
+      "hit_rate@10": 0.4551,
+      "recall@10": 0.1169,
+      "usuarios": 602
+    },
+    "svd_k64_popularidad_w0.7": {
+      "k": 64,
+      "prior": "popularidad",
+      "peso_afinidad": 0.7,
+      "hit_rate@10": 0.5548,
+      "recall@10": 0.163,
+      "usuarios": 602
+    },
+    "svd_k64_popularidad_w0.5": {
+      "k": 64,
+      "prior": "popularidad",
+      "peso_afinidad": 0.5,
+      "hit_rate@10": 0.5914,
+      "recall@10": 0.1822,
+      "usuarios": 602
+    },
+    "svd_k64_popularidad_w0.3": {
+      "k": 64,
+      "prior": "popularidad",
+      "peso_afinidad": 0.3,
+      "hit_rate@10": 0.5698,
+      "recall@10": 0.1739,
+      "usuarios": 602
+    },
+    "svd_k64_calidad_w1.0": {
+      "k": 64,
+      "prior": "calidad",
+      "peso_afinidad": 1.0,
+      "hit_rate@10": 0.4551,
+      "recall@10": 0.1169,
+      "usuarios": 602
+    },
+    "svd_k64_calidad_w0.7": {
+      "k": 64,
+      "prior": "calidad",
+      "peso_afinidad": 0.7,
+      "hit_rate@10": 0.49,
+      "recall@10": 0.1396,
+      "usuarios": 602
+    },
+    "svd_k64_calidad_w0.5": {
+      "k": 64,
+      "prior": "calidad",
+      "peso_afinidad": 0.5,
+      "hit_rate@10": 0.5166,
+      "recall@10": 0.1419,
+      "usuarios": 602
+    },
+    "svd_k64_calidad_w0.3": {
+      "k": 64,
+      "prior": "calidad",
+      "peso_afinidad": 0.3,
+      "hit_rate@10": 0.49,
+      "recall@10": 0.1292,
+      "usuarios": 602
+    },
+    "svd_k128_popularidad_w1.0": {
+      "k": 128,
+      "prior": "popularidad",
+      "peso_afinidad": 1.0,
+      "hit_rate@10": 0.4568,
+      "recall@10": 0.1119,
+      "usuarios": 602
+    },
+    "svd_k128_popularidad_w0.7": {
+      "k": 128,
+      "prior": "popularidad",
+      "peso_afinidad": 0.7,
+      "hit_rate@10": 0.5615,
+      "recall@10": 0.1687,
+      "usuarios": 602
+    },
+    "svd_k128_popularidad_w0.5": {
+      "k": 128,
+      "prior": "popularidad",
+      "peso_afinidad": 0.5,
+      "hit_rate@10": 0.5797,
+      "recall@10": 0.1778,
+      "usuarios": 602
+    },
+    "svd_k128_popularidad_w0.3": {
+      "k": 128,
+      "prior": "popularidad",
+      "peso_afinidad": 0.3,
+      "hit_rate@10": 0.5565,
+      "recall@10": 0.1656,
+      "usuarios": 602
+    },
+    "svd_k128_calidad_w1.0": {
+      "k": 128,
+      "prior": "calidad",
+      "peso_afinidad": 1.0,
+      "hit_rate@10": 0.4568,
+      "recall@10": 0.1119,
+      "usuarios": 602
+    },
+    "svd_k128_calidad_w0.7": {
+      "k": 128,
+      "prior": "calidad",
+      "peso_afinidad": 0.7,
+      "hit_rate@10": 0.5249,
+      "recall@10": 0.1488,
+      "usuarios": 602
+    },
+    "svd_k128_calidad_w0.5": {
+      "k": 128,
+      "prior": "calidad",
+      "peso_afinidad": 0.5,
+      "hit_rate@10": 0.5066,
+      "recall@10": 0.1356,
+      "usuarios": 602
+    },
+    "svd_k128_calidad_w0.3": {
+      "k": 128,
+      "prior": "calidad",
+      "peso_afinidad": 0.3,
+      "hit_rate@10": 0.4551,
+      "recall@10": 0.119,
+      "usuarios": 602
+    }
+  },
+  "final": {
+    "fecha": "2026-11-13",
+    "k": 64,
+    "prior": "popularidad",
+    "peso_afinidad": 0.5,
+    "min_notas": 5,
+    "peliculas": 3641,
+    "peliculas_con_plataforma": 1892,
+    "calificaciones": 90175,
+    "varianza_explicada_k": 0.5503
+  }
+}

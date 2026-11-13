@@ -7,7 +7,7 @@ Dos integrantes, división por capas. **El único punto de contacto son los cont
 ## Persona A: datos, modelo de ML y herramientas del backend
 
 - **Dataset:** descarga, limpieza y consolidación del catálogo (hecho: ver [datos.md](datos.md)).
-- **Modelo de ML:** vectores de similitud entre películas calculados offline (SVD sobre la matriz de calificaciones) y la API de ML (`/recomendar`), que en producción solo usa numpy.
+- **Modelo de ML:** vectores de similitud entre películas calculados offline (SVD sobre la matriz de calificaciones) y la API de ML (`/recomendar`), que en producción solo usa numpy. Detalle en [modelo.md](modelo.md).
 - **Herramientas que invoca el chat** (borrador, nombres y formatos no definitivos):
 
 | Herramienta | Recibe | Devuelve |
@@ -55,7 +55,8 @@ El estado real lo indica la Persona A cuando haga falta; ver [status.md](status.
 
 ## Puntos abiertos que tocan a la Persona A
 
-- **¿Quién escribe en `Recomendaciones`?** Propuesta: `recomendar` guarda cada recomendación entregada. Sin confirmar.
+- **¿Quién escribe en `Recomendaciones`?** Propuesta: `recomendar` guarda cada recomendación entregada y excluye lo recomendado en el último día (decidido). Sin confirmar con B.
+- **¿De dónde salen las notas del usuario?** Propuesta: `recomendar` las lee de `Vistas` por su cuenta (el chat no las reenvía y el LLM no gasta tokens en la lista). Cambia el contrato del borrador. A confirmar con B.
 - **¿Quién aplica el filtro por disponibilidad?** Propuesta: `recomendar` devuelve solo títulos disponibles en las plataformas del usuario. Sin confirmar. (El catálogo ya trae un snapshot de plataformas en Perú, así que el filtro puede hacerse en memoria sin consultar TMDB por cada candidato.)
 - ~~ID de película~~ **Decidido:** contratos y tablas usan solo el `id` propio del catálogo; nunca IDs de las fuentes. Películas fuera del catálogo (p. ej. posteriores a 2018): propuesta, **no se agregan**; `buscar_pelicula` las identifica en vivo pero las marca `en_catalogo: false` y el bot lo explica de forma amable (coincide con HU8, "título no encontrado"). A confirmar con B.
 - ~~Región~~ **Decidido:** us-east-1.

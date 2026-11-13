@@ -7,6 +7,7 @@ PromptCorn: chatbot de recomendación de películas (workflow agéntico Nivel 3)
 
 - Contexto completo: [docs/contexto.md](docs/contexto.md)
 - Datos y consolidación: [docs/datos.md](docs/datos.md)
+- Modelo de ML (diseño, evaluación, artefactos): [docs/modelo.md](docs/modelo.md)
 - Equipo y división del trabajo: [docs/equipo.md](docs/equipo.md)
 - Status y TODOs: [docs/status.md](docs/status.md). **Actualízalo al terminar una tarea.**
 

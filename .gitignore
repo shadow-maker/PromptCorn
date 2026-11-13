@@ -31,3 +31,6 @@ cdk.out/
 .DS_Store
 .idea/
 .vscode/
+
+# Artefactos del modelo (contienen datos derivados; van a S3)
+ml/artefactos/

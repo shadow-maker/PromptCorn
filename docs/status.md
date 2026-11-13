@@ -1,6 +1,6 @@
 # Status y TODOs
 
-Última actualización: 2026-11-12. Entrega: **martes 17-Nov-2026 23:59h** · Exposición: miércoles 18-Nov-2026 19h.
+Última actualización: 2026-11-13. Entrega: **martes 17-Nov-2026 23:59h** · Exposición: miércoles 18-Nov-2026 19h.
 
 Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = Persona B (chat, frontend, Parte A) · **A+B** = ambos. Ver [equipo.md](equipo.md).
 
@@ -9,7 +9,7 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 | # | Etapa | Responsable | Estado |
 |---|---|---|---|
 | 0 | Fundaciones (repo, datos, llaves, accesos, contratos) | A+B | 🟡 En curso |
-| 1 | Modelo de ML y `/recomendar` | A | 🟡 En curso (datos listos; falta modelo y API) |
+| 1 | Modelo de ML y `/recomendar` | A | 🟡 En curso (modelo entrenado y evaluado; falta la Lambda) |
 | 2 | Tablas DynamoDB y herramientas | A | ⚪ Pendiente |
 | 3 | Lambda del chat con Groq | B | ❔ A confirmar con B |
 | 4 | Frontend | B | ❔ A confirmar con B |
@@ -33,9 +33,10 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 
 ## Etapa 1: Modelo de ML (A)
 - [x] Scripts de descarga y consolidación (`scripts/`).
-- [ ] Entrenar vectores de similitud (SVD) offline, script o notebook en `/ml`, exportar `.npy`.
-- [ ] Evaluación simple del modelo (p. ej. split por fecha) para el informe.
-- [ ] Lambda `/recomendar` (numpy, similitud coseno, filtros y exclusiones).
+- [x] Entrenar vectores de similitud (SVD k=64) offline: `ml/entrenar.py` → `ml/artefactos/` ([modelo.md](modelo.md)).
+- [x] Evaluación (split temporal por usuario): Recall@10 0.182 vs 0.125 del baseline "lo más visto" (+46 %).
+- [x] Núcleo del recomendador (`tools/recomendar/recomendador.py`): filtros, perfil, "parecida a X", arranque en frío, motivo.
+- [ ] Lambda `/recomendar`: `handler.py` (lee artefactos de S3 y `Vistas`/`Recomendaciones` de DynamoDB), layer de numpy y guía de despliegue.
 
 ## Etapa 2: Tablas y herramientas (A)
 - [ ] Tablas DynamoDB: `Vistas`, `Perfil`, `Recomendaciones` (+ `Peliculas` si se adopta).
@@ -73,5 +74,10 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - `id` para películas fuera del catálogo (posteriores a 2018) encontradas en vivo.
 - Versión de Python de las Lambdas (3.13 o 3.14).
 - ¿Quién escribe en `Recomendaciones`? ¿Quién filtra por disponibilidad? (propuesta: `recomendar` en ambos casos).
+- ¿`recomendar` lee las notas de `Vistas` por su cuenta (propuesta) o las recibe en el request?
 - Detalle del híbrido filtros del LLM + ranking del ML.
-- Arquitectura de datos en AWS (propuesta en [datos.md](datos.md#uso-en-aws-propuesta-aún-no-conectado)): catálogo en S3 para el ML + DynamoDB `Peliculas` para consultas por llave.
+- Arquitectura de datos en AWS (propuesta en [datos.md](datos.md#uso-en-aws-propuesta-aún-no-conectado)): DynamoDB `Peliculas` para consultas por llave.
+
+## Decisiones tomadas
+- Artefactos del modelo (vectores + catálogo del modelo) en **S3**; la Lambda los carga al arrancar.
+- `recomendar` excluye lo ya recomendado **en el último día** (para que "dame otras opciones" traiga títulos nuevos).
