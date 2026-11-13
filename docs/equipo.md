@@ -57,5 +57,7 @@ El estado real lo indica la Persona A cuando haga falta; ver [status.md](status.
 
 - **¿Quién escribe en `Recomendaciones`?** Propuesta: `recomendar` guarda cada recomendación entregada. Sin confirmar.
 - **¿Quién aplica el filtro por disponibilidad?** Propuesta: `recomendar` devuelve solo títulos disponibles en las plataformas del usuario. Sin confirmar. (El catálogo ya trae un snapshot de plataformas en Perú, así que el filtro puede hacerse en memoria sin consultar TMDB por cada candidato.)
-- **ID de película en los contratos.** El borrador usa `tmdbId`/`movieId`, pero el catálogo consolidado tiene un **ID propio** (`id`). Propuesta: los contratos y las tablas usan ese `id`; la traducción a la referencia externa queda dentro de las herramientas de A. Acordar con B.
-- Contratos JSON definitivos, región de AWS, lenguaje de las Lambdas y herramienta de despliegue: por definir.
+- ~~ID de película~~ **Decidido:** contratos y tablas usan solo el `id` propio del catálogo; nunca IDs de las fuentes. Pendiente: qué `id` recibe una película posterior a 2018 encontrada en vivo (no está en el catálogo).
+- ~~Región~~ **Decidido:** us-east-1.
+- ~~Despliegue~~ **Decidido:** cuenta AWS Academy (Learner Lab). El equipo despliega **a mano** desde la consola usando el código del repo; los agentes de IA no tocan AWS. Roles: `LabRole`.
+- Contratos JSON definitivos y versión de Python de las Lambdas (3.13 o 3.14, según lo que ofrezca la consola): por definir.

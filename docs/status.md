@@ -24,11 +24,12 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - [x] (A) Datos descargados: MovieLens ml-latest-small + TMDB (snapshot de disponibilidad PE del 2026-11-12).
 - [x] (A) Catálogo consolidado con ID propio: 9,649 películas y 100,612 calificaciones ([datos.md](datos.md)).
 - [ ] (A) Compartir datos con B por Drive ([qué compartir](datos.md#compartir-con-la-persona-b)).
-- [ ] (A+B) Contratos JSON de las herramientas (incluye acordar el ID de película).
+- [ ] (A+B) Contratos JSON de las herramientas (ID de película = `id` propio, ya decidido).
 - [ ] (B) API key de Groq; verificar modelos con tool calling y límites del plan gratuito.
 - [ ] (A+B) Accesos a la cuenta AWS y convención de prefijos.
-- [ ] (A) Región AWS (us-east-1 vs sa-east-1).
-- [ ] (A+B) Lenguaje de las Lambdas y herramienta de despliegue (SAM / Serverless Framework / CDK).
+- [x] (A) Región AWS: us-east-1 (falta redactar el sustento para el informe).
+- [x] (A+B) Despliegue manual desde la consola de AWS Academy (Learner Lab, `LabRole`); Lambdas en Python.
+- [ ] (A+B) Versión de Python: confirmar en la consola si existe el runtime 3.14 (si no, 3.13).
 
 ## Etapa 1: Modelo de ML (A)
 - [x] Scripts de descarga y consolidación (`scripts/`).
@@ -68,9 +69,9 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - [ ] Ensayo y exposición (miércoles 18, 19h).
 
 ## Decisiones abiertas
-- Región AWS.
-- Lenguaje de Lambdas y herramienta de despliegue.
-- Contratos JSON de las herramientas e ID de película (`id` propio vs `tmdbId`).
+- Contratos JSON de las herramientas.
+- `id` para películas fuera del catálogo (posteriores a 2018) encontradas en vivo.
+- Versión de Python de las Lambdas (3.13 o 3.14).
 - ¿Quién escribe en `Recomendaciones`? ¿Quién filtra por disponibilidad? (propuesta: `recomendar` en ambos casos).
 - Detalle del híbrido filtros del LLM + ranking del ML.
 - Arquitectura de datos en AWS (propuesta en [datos.md](datos.md#uso-en-aws-propuesta-aún-no-conectado)): catálogo en S3 para el ML + DynamoDB `Peliculas` para consultas por llave.
