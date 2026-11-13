@@ -6,9 +6,10 @@
 - [x] Documentación base del proyecto (`README.md`, `CLAUDE.md`, `docs/`).
 - [x] Repositorio Git y remote público en GitHub.
 - [x] Investigación de fuentes de datos y plan de consolidación ([datos.md](datos.md)).
+- [x] Catálogo consolidado: 9,649 películas y 100,612 calificaciones con ID propio (`data/processed/`, no versionado).
 
 ## Etapa 0: Fundaciones
-- [ ] GO para descargar MovieLens ml-latest-small.
+- [x] Datos descargados (MovieLens ml-latest-small + TMDB, snapshot de disponibilidad PE del 2026-11-12).
 - [x] Token de lectura de TMDB (local en `~/.config/promptcorn/tmdb_token`, fuera del repo; probado OK).
 - [ ] Obtener API key de Groq; verificar modelos con tool calling y límites del plan gratuito.
 - [ ] Accesos AWS del equipo.
@@ -17,14 +18,14 @@
 - [ ] Definir contratos JSON de las herramientas.
 
 ## Etapa 1: Datos y modelo de ML
-- [ ] Script de descarga de MovieLens.
-- [ ] Enriquecimiento con TMDB (detalle + watch/providers PE).
-- [ ] Consolidar catálogo (join MovieLens ⨝ links ⨝ TMDB).
+- [x] Script de descarga de MovieLens (`scripts/descargar_movielens.py`).
+- [x] Enriquecimiento con TMDB, detalle + plataformas PE (`scripts/descargar_tmdb.py`).
+- [x] Consolidar catálogo con ID propio (`scripts/consolidar.py`).
 - [ ] Entrenar vectores de similitud (SVD) offline y exportar `.npy`.
 - [ ] Lambda `/recomendar` (numpy, similitud coseno).
 
 ## Etapa 2: Tablas y herramientas
-- [ ] Tablas DynamoDB: Conversaciones, Vistas, Perfil, Recomendaciones.
+- [ ] Tablas DynamoDB: Peliculas (carga del catálogo), Conversaciones, Vistas, Perfil, Recomendaciones.
 - [ ] Herramientas: recomendar, buscar_pelicula, ver_donde_ver, registrar_vista, guardar_plataformas, obtener_historial.
 - [ ] Llaves en SSM Parameter Store (SecureString).
 
@@ -48,4 +49,4 @@
 - Lenguaje de Lambdas y herramienta de despliegue.
 - Contratos JSON de las herramientas.
 - Detalle del híbrido filtros del LLM + ranking del ML.
-- ¿ml-latest-small (2018) o ml-32m (2023)? Por defecto: small.
+- Arquitectura de datos en AWS (propuesta en [datos.md](datos.md#uso-en-aws-propuesta-aún-no-conectado)): catálogo en S3 para el ML + DynamoDB `Peliculas` para consultas por llave.

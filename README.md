@@ -26,6 +26,7 @@ docs/
   contexto.md   Enunciado, propuesta, diseño, historias de usuario
   datos.md      Fuentes de datos y plan de consolidación
   status.md     Avance y TODOs
+scripts/        descarga de datos y consolidación del catálogo
 data/           (no versionado) datos descargados y procesados
 ```
 
@@ -37,4 +38,4 @@ Ver [docs/status.md](docs/status.md).
 - Metadatos: este producto usa la API de TMDB pero no está respaldado ni certificado por TMDB.
 - Disponibilidad en plataformas: JustWatch (vía TMDB).
 
-Los datos no se incluyen en el repositorio; se descargan con los scripts del proyecto.
+Los datos no se incluyen en el repositorio; se regeneran con los scripts (ver [docs/datos.md](docs/datos.md#cómo-regenerarlo)).

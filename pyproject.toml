@@ -1,0 +1,9 @@
+[project]
+name = "promptcorn"
+version = "0.1.0"
+description = "PromptCorn: chatbot agéntico de recomendación de películas"
+requires-python = ">=3.12"
+dependencies = [
+    "pandas>=2.2",
+    "pyarrow>=17",
+]
