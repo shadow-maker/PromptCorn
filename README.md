@@ -1,6 +1,6 @@
-# 🍿 Promptcorn
+# 🍿 PromptCorn
 
-**Promptcorn** (prompt + popcorn) es un chatbot conversacional que recomienda películas disponibles en tus plataformas de streaming. Es un workflow agéntico de **Nivel 3** desplegado en **AWS serverless**.
+**PromptCorn** (prompt + popcorn) es un chatbot conversacional que recomienda películas disponibles en tus plataformas de streaming. Es un workflow agéntico de **Nivel 3** desplegado en **AWS serverless**.
 
 Proyecto Final del curso Cloud Computing, Maestría en Ciencia de Datos e Inteligencia Artificial (UTEC Posgrado).
 

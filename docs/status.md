@@ -9,7 +9,7 @@
 
 ## Etapa 0: Fundaciones
 - [ ] GO para descargar MovieLens ml-latest-small.
-- [ ] Obtener API key / token de lectura de TMDB.
+- [x] Token de lectura de TMDB (local en `~/.config/promptcorn/tmdb_token`, fuera del repo; probado OK).
 - [ ] Obtener API key de Groq; verificar modelos con tool calling y límites del plan gratuito.
 - [ ] Accesos AWS del equipo.
 - [ ] Decidir región AWS (us-east-1 vs sa-east-1).

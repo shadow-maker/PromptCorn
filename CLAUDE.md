@@ -3,7 +3,7 @@
 Guía para agentes de IA que trabajen en este repo.
 
 ## Proyecto
-Promptcorn: chatbot de recomendación de películas (workflow agéntico Nivel 3) para el Proyecto Final de Cloud Computing, Maestría CDIA (UTEC). Entrega: 17-Nov-2026 23:59h.
+PromptCorn: chatbot de recomendación de películas (workflow agéntico Nivel 3) para el Proyecto Final de Cloud Computing, Maestría CDIA (UTEC). Entrega: 17-Nov-2026 23:59h.
 
 - Contexto completo: [docs/contexto.md](docs/contexto.md)
 - Datos y consolidación: [docs/datos.md](docs/datos.md)

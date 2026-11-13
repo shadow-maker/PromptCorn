@@ -17,7 +17,7 @@ Licencia: uso de investigación, no comercial, citar a Harper y Konstan (2015), 
 
 ### 2. TMDB API v3: metadatos y disponibilidad
 
-Base `https://api.themoviedb.org/3`. Requiere API key o token de lectura (Bearer). Verificado: el endpoint responde `401` sin credenciales, así que **falta la llave**.
+Base `https://api.themoviedb.org/3`. Requiere API key o token de lectura (Bearer). El token de lectura vive en `~/.config/promptcorn/tmdb_token` (local, fuera del repo) o en la variable `TMDB_TOKEN`; en AWS irá en SSM Parameter Store. Probado: `/movie/862?append_to_response=watch/providers` devuelve detalle en español y plataformas PE en una sola llamada.
 
 Lo que aporta y MovieLens no tiene: sinopsis, duración, póster, idioma, popularidad, puntaje, géneros de TMDB y plataformas por país (JustWatch).
 

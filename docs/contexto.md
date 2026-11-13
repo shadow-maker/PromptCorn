@@ -1,4 +1,4 @@
-# Contexto del proyecto: Promptcorn
+# Contexto del proyecto: PromptCorn
 
 ## 1. Qué es este proyecto
 
@@ -46,9 +46,9 @@ Requisitos del Nivel 3: como mínimo 1 API de modelo de ML y 1 API de Groq con m
 
 > El repositorio es público: no subir llaves de API ni datos con restricción de redistribución.
 
-## 3. La propuesta: Promptcorn
+## 3. La propuesta: PromptCorn
 
-Promptcorn (prompt + popcorn) es un chatbot conversacional de recomendación de películas, Nivel 3. Servicio de una empresa ficticia de recomendación para suscriptores de streaming.
+PromptCorn (prompt + popcorn) es un chatbot conversacional de recomendación de películas, Nivel 3. Servicio de una empresa ficticia de recomendación para suscriptores de streaming.
 
 Decisiones vigentes:
 - Un solo usuario en el MVP: `userId` fijo, sin login ni múltiples cuentas.
