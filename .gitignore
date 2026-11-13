@@ -1,0 +1,33 @@
+# Datos (no se redistribuyen)
+data/
+*.zip
+*.parquet
+*.npy
+
+# Secretos
+.env
+.env.*
+*.pem
+*.key
+secrets*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Node
+node_modules/
+dist/
+
+# AWS / despliegue
+.aws-sam/
+.serverless/
+cdk.out/
+
+# SO / editores
+.DS_Store
+.idea/
+.vscode/
