@@ -13,6 +13,9 @@ PromptCorn: chatbot de recomendación de películas (workflow agéntico Nivel 3)
 ## Rol
 El usuario es la **Persona A**: datos, modelo de ML, herramientas del backend y este repo (dueño de `/ml`, `/tools`, `/scripts`). La Persona B lleva el chat (`/chat`), el frontend (repo aparte) y la Parte A. No editar lo de B; el punto de contacto son los contratos JSON de las herramientas. Recursos AWS de A con prefijo `promptcorn-tools-`.
 
+## Cómo trabajar con el usuario
+- Las preguntas del usuario ("¿por qué X?", "¿no sería mejor Y?") **no son necesariamente pedidos de cambio**. Responde con el razonamiento, defiende la decisión si sigue siendo la mejor y cambia solo si el argumento lo justifica. Debatir está bien; ceder por reflejo no.
+
 ## Reglas
 - **El repo es público.** Nunca subir llaves (Groq, TMDB, AWS), `.env`, ni datos crudos o enriquecidos (`data/` está en `.gitignore`). Las llaves van en SSM Parameter Store.
 - No subir CSV de MovieLens ni respuestas de TMDB: se regeneran con los scripts.
