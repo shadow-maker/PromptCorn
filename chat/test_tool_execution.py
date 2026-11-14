@@ -1,162 +1,138 @@
 
 import json
-from groq_client import consultar_groq
 
-# --------------------------------------------------
-# 1. DEFINICIÓN DE LAS HERRAMIENTAS
-# --------------------------------------------------
 
-TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "buscar_pelicula",
-            "description": "Busca información de una película por su nombre.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "nombre": {
-                        "type": "string",
-                        "description": "Nombre de la película."
-                    }
-                },
-                "required": ["nombre"],
-                "additionalProperties": False
+def probar_ejecucion_herramientas():
+
+    # Importación dentro de la función para evitar
+    # llamadas a Groq durante unittest discover.
+    from groq_client import consultar_groq
+
+    TOOLS = [
+        {
+            "type": "function",
+            "function": {
+                "name": "buscar_pelicula",
+                "description": "Busca información de una película por su nombre.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "titulo": {
+                            "type": "string",
+                            "description": "Nombre de la película."
+                        }
+                    },
+                    "required": ["titulo"],
+                    "additionalProperties": False
+                }
             }
         }
-    }
-]
+    ]
 
+    def buscar_pelicula(titulo):
 
-# --------------------------------------------------
-# 2. IMPLEMENTACIÓN DE LA FUNCIÓN PYTHON
-# --------------------------------------------------
-
-def buscar_pelicula(nombre):
-
-    # Datos simulados para probar el flujo.
-    # Luego se reemplazarán por una consulta a la API real.
-
-    peliculas_demo = {
-        "interstellar": {
-            "titulo": "Interstellar",
-            "anio": 2014,
-            "director": "Christopher Nolan",
-            "genero": ["Ciencia ficción", "Drama", "Aventura"],
-            "descripcion": (
-                "Un grupo de exploradores viaja por un agujero "
-                "de gusano en busca de un nuevo hogar para la humanidad."
-            ),
-            "fuente": "Datos de demostración local"
+        peliculas_demo = {
+            "interstellar": {
+                "titulo": "Interstellar",
+                "anio": 2014,
+                "director": "Christopher Nolan",
+                "genero": ["Ciencia ficción", "Drama", "Aventura"],
+                "descripcion": (
+                    "Un grupo de exploradores viaja por un agujero "
+                    "de gusano en busca de un nuevo hogar para la humanidad."
+                ),
+                "fuente": "Datos de demostración local"
+            }
         }
+
+        resultado = peliculas_demo.get(titulo.lower().strip())
+
+        if resultado:
+            return resultado
+
+        return {
+            "error": "No se encontró la película en la base de demostración.",
+            "pelicula_buscada": titulo
+        }
+
+    FUNCIONES = {
+        "buscar_pelicula": buscar_pelicula
     }
 
-    resultado = peliculas_demo.get(nombre.lower().strip())
+    messages = [
+        {
+            "role": "system",
+            "content": """
+            Eres PromptCorn, un asistente especializado en películas.
+            Responde siempre en español.
+            Utiliza las herramientas cuando necesites información.
+            No inventes datos que no estén en los resultados recibidos.
+            """
+        },
+        {
+            "role": "user",
+            "content": "Busca información de la película Interstellar."
+        }
+    ]
 
-    if resultado:
-        return resultado
+    try:
+        for intento in range(5):
 
-    return {
-        "error": "No se encontró la película en la base de demostración.",
-        "pelicula_buscada": nombre
-    }
+            respuesta = consultar_groq(messages, tools=TOOLS)
 
+            if not respuesta.tool_calls:
+                print("\nPROMPTCORN:\n")
+                print(respuesta.content)
+                break
 
-# --------------------------------------------------
-# 3. REGISTRO DE HERRAMIENTAS DISPONIBLES
-# --------------------------------------------------
-
-FUNCIONES = {
-    "buscar_pelicula": buscar_pelicula
-}
-
-
-# --------------------------------------------------
-# 4. CONVERSACIÓN INICIAL
-# --------------------------------------------------
-
-messages = [
-    {
-        "role": "system",
-        "content": """
-        Eres PromptCorn, un asistente especializado en películas.
-
-        Responde siempre en español.
-        Utiliza las herramientas cuando necesites información.
-        No inventes datos que no estén en los resultados recibidos.
-        """
-    },
-    {
-        "role": "user",
-        "content": "Busca información de la película Interstellar."
-    }
-]
-
-
-# --------------------------------------------------
-# 5. CICLO DE EJECUCIÓN DEL AGENTE
-# --------------------------------------------------
-
-try:
-
-    for intento in range(5):
-
-        respuesta = consultar_groq(messages, tools=TOOLS)
-
-        # Si el modelo no solicita herramientas, termina.
-        if not respuesta.tool_calls:
-
-            print("\nPROMPTCORN:\n")
-            print(respuesta.content)
-            break
-
-        # Guardar la solicitud de herramientas del modelo.
-        messages.append(
-            respuesta.model_dump(exclude_none=True)
-        )
-
-        # Ejecutar cada herramienta solicitada.
-        for llamada in respuesta.tool_calls:
-
-            nombre_funcion = llamada.function.name
-
-            argumentos = json.loads(
-                llamada.function.arguments
+            messages.append(
+                respuesta.model_dump(exclude_none=True)
             )
 
-            print("\nHERRAMIENTA EJECUTADA:")
-            print("Función:", nombre_funcion)
-            print("Argumentos:", argumentos)
+            for llamada in respuesta.tool_calls:
 
-            funcion = FUNCIONES.get(nombre_funcion)
+                nombre_funcion = llamada.function.name
 
-            if funcion:
-
-                resultado = funcion(**argumentos)
-
-            else:
-
-                resultado = {
-                    "error": "Herramienta no reconocida."
-                }
-
-            print("\nRESULTADO DE PYTHON:")
-            print(json.dumps(resultado, indent=4, ensure_ascii=False))
-
-            # Enviar el resultado al historial para que Groq lo procese.
-            messages.append({
-                "role": "tool",
-                "tool_call_id": llamada.id,
-                "content": json.dumps(
-                    resultado,
-                    ensure_ascii=False
+                argumentos = json.loads(
+                    llamada.function.arguments
                 )
-            })
 
-    else:
-        print("\nSe alcanzó el límite de iteraciones del agente.")
+                print("\nHERRAMIENTA EJECUTADA:")
+                print("Función:", nombre_funcion)
+                print("Argumentos:", argumentos)
 
-except Exception as error:
+                funcion = FUNCIONES.get(nombre_funcion)
 
-    print("\nERROR EN LA EJECUCIÓN:")
-    print(error)
+                if funcion:
+                    resultado = funcion(**argumentos)
+                else:
+                    resultado = {
+                        "error": "Herramienta no reconocida."
+                    }
+
+                print("\nRESULTADO DE PYTHON:")
+                print(json.dumps(
+                    resultado,
+                    indent=4,
+                    ensure_ascii=False
+                ))
+
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": llamada.id,
+                    "content": json.dumps(
+                        resultado,
+                        ensure_ascii=False
+                    )
+                })
+
+        else:
+            print("\nSe alcanzó el límite de iteraciones del agente.")
+
+    except Exception as error:
+        print("\nERROR EN LA EJECUCIÓN:")
+        print(error)
+
+
+if __name__ == "__main__":
+    probar_ejecucion_herramientas()

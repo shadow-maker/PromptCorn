@@ -1,4 +1,5 @@
 
+
 import os
 import json
 import unittest
@@ -11,8 +12,7 @@ from unittest.mock import patch
 # 1. CONFIGURACION DEL ENTORNO DE PRUEBAS
 # ==========================================================
 
-# IMPORTANTE:
-# Configurar las variables ANTES de importar lambda_function.
+# Configurar variables antes de importar lambda_function.
 
 os.environ["CONVERSATIONS_TABLE"] = "TestConversaciones"
 os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
@@ -22,7 +22,6 @@ os.environ["AWS_EC2_METADATA_DISABLED"] = "true"
 os.environ["GROQ_API_KEY"] = "test-key-for-mocks"
 
 
-# Importar Lambda después de configurar las variables.
 from lambda_function import lambda_handler
 
 
@@ -130,7 +129,78 @@ class TestLambda(unittest.TestCase):
 
 
     # ------------------------------------------------------
-    # PRUEBA 3: EJECUCION DE UNA HERRAMIENTA
+    # PRUEBA 3: USO DEL HISTORIAL CONVERSACIONAL
+    # ------------------------------------------------------
+
+    @patch("lambda_function.guardar_mensaje")
+    @patch("lambda_function.obtener_conversacion")
+    @patch("lambda_function.consultar_groq")
+    def test_usa_historial_conversacion(
+        self,
+        mock_groq,
+        mock_historial,
+        mock_guardar
+    ):
+
+        mock_historial.return_value = [
+            {
+                "role": "user",
+                "content": "Me gustan las peliculas de ciencia ficcion."
+            },
+            {
+                "role": "assistant",
+                "content": "Lo tendre en cuenta."
+            }
+        ]
+
+        mock_groq.return_value = FakeGroqMessage(
+            content="Te puedo recomendar Interstellar.",
+            tool_calls=None
+        )
+
+        event = {
+            "body": {
+                "user_id": "usuario_001",
+                "message": "Recomiendame una pelicula"
+            }
+        }
+
+        respuesta = lambda_handler(event, None)
+
+        body = json.loads(respuesta["body"])
+
+        self.assertEqual(respuesta["statusCode"], 200)
+
+        self.assertEqual(
+            body["response"],
+            "Te puedo recomendar Interstellar."
+        )
+
+        mensajes_enviados = mock_groq.call_args.args[0]
+
+        self.assertIn(
+            {
+                "role": "user",
+                "content": "Me gustan las peliculas de ciencia ficcion."
+            },
+            mensajes_enviados
+        )
+
+        self.assertIn(
+            {
+                "role": "assistant",
+                "content": "Lo tendre en cuenta."
+            },
+            mensajes_enviados
+        )
+
+        mock_historial.assert_called_once_with("usuario_001")
+
+        print("\nPRUEBA 3: Uso del historial conversacional - OK")
+
+
+    # ------------------------------------------------------
+    # PRUEBA 4: EJECUCION DE UNA HERRAMIENTA
     # ------------------------------------------------------
 
     @patch("lambda_function.ejecutar_herramienta")
@@ -147,7 +217,6 @@ class TestLambda(unittest.TestCase):
 
         mock_historial.return_value = []
 
-        # Simular llamada de herramienta solicitada por Groq.
         llamada = SimpleNamespace(
             id="call_001",
             function=SimpleNamespace(
@@ -173,7 +242,6 @@ class TestLambda(unittest.TestCase):
             respuesta_final
         ]
 
-        # Simular resultado de la API.
         mock_ejecutor.return_value = {
             "titulo": "Interstellar",
             "anio": 2014,
@@ -198,7 +266,7 @@ class TestLambda(unittest.TestCase):
             "Interstellar es una pelicula de 2014."
         )
 
-        # Verificar ejecución de la herramienta.
+        # Verificar ejecucion de la herramienta.
         mock_ejecutor.assert_called_once_with(
             "buscar_pelicula",
             {
@@ -210,8 +278,7 @@ class TestLambda(unittest.TestCase):
         # Verificar dos consultas a Groq.
         self.assertEqual(mock_groq.call_count, 2)
 
-        # Verificar que el resultado de la herramienta
-        # regresa a Groq como mensaje de tipo tool.
+        # Verificar que el resultado vuelva a Groq como tool.
         segundo_historial = mock_groq.call_args_list[1].args[0]
 
         mensajes_tool = [
@@ -222,11 +289,28 @@ class TestLambda(unittest.TestCase):
 
         self.assertEqual(len(mensajes_tool), 1)
 
-        print("\nPRUEBA 3: Ejecucion de herramienta - OK")
+        # Verificar que se guarde el mensaje del usuario.
+        mock_guardar.assert_any_call(
+            "usuario_001",
+            "user",
+            "Busca Interstellar"
+        )
+
+        # Verificar que se guarde la respuesta del asistente.
+        mock_guardar.assert_any_call(
+            "usuario_001",
+            "assistant",
+            "Interstellar es una pelicula de 2014."
+        )
+
+        # Deben guardarse exactamente dos mensajes.
+        self.assertEqual(mock_guardar.call_count, 2)
+
+        print("\nPRUEBA 4: Ejecucion de herramienta - OK")
 
 
     # ------------------------------------------------------
-    # PRUEBA 4: ERROR EN LA EJECUCION DE UNA HERRAMIENTA
+    # PRUEBA 5: ERROR EN LA EJECUCION DE UNA HERRAMIENTA
     # ------------------------------------------------------
 
     @patch("lambda_function.ejecutar_herramienta")
@@ -253,14 +337,11 @@ class TestLambda(unittest.TestCase):
             )
         )
 
-        # Primera respuesta: Groq solicita la herramienta.
         respuesta_tool = FakeGroqMessage(
             content=None,
             tool_calls=[llamada]
         )
 
-        # Segunda respuesta: Groq recibe el error
-        # y genera una respuesta para el usuario.
         respuesta_final = FakeGroqMessage(
             content="No pude consultar la pelicula en este momento.",
             tool_calls=None
@@ -271,7 +352,6 @@ class TestLambda(unittest.TestCase):
             respuesta_final
         ]
 
-        # Simular que la API externa falla.
         mock_ejecutor.side_effect = RuntimeError(
             "API no disponible"
         )
@@ -312,7 +392,7 @@ class TestLambda(unittest.TestCase):
 
         self.assertFalse(resultado_tool["ok"])
 
-        print("\nPRUEBA 4: Error de herramienta - OK")
+        print("\nPRUEBA 5: Error de herramienta - OK")
 
 
 # ==========================================================
