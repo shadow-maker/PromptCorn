@@ -19,7 +19,8 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 
 ## Etapa 0: Fundaciones
 - [x] (A) Documentación base (`README.md`, `CLAUDE.md`, `docs/`).
-- [x] (A) Repo del backend público en GitHub.
+- [x] (A) Repo público en GitHub (único para todo el proyecto).
+- [ ] (A) Agregar a B como colaborador del repo (Settings → Collaborators).
 - [x] (A) Token de lectura de TMDB (local en `~/.config/promptcorn/tmdb_token`, fuera del repo).
 - [x] (A) Datos descargados: MovieLens ml-latest-small + TMDB (snapshot de disponibilidad PE del 2026-11-12).
 - [x] (A) Catálogo consolidado con ID propio: 9,649 películas y 100,612 calificaciones ([datos.md](datos.md)).
@@ -52,7 +53,7 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - [ ] Desarrollo contra simulaciones → cambio a URLs reales por variables de entorno.
 
 ## Etapa 4: Frontend (B)
-- [ ] Prototipo (Lovable / Figma Make) y conexión con API Gateway.
+- [ ] Prototipo en `/frontend` y conexión con API Gateway.
 - [ ] Hosting en S3 + CloudFront o Amplify; créditos a TMDB, JustWatch y MovieLens.
 
 ## Etapa 5: Integración y pruebas (A+B)

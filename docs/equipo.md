@@ -2,7 +2,7 @@
 
 Dos integrantes, división por capas. **El único punto de contacto son los contratos JSON de las herramientas** (qué recibe y qué devuelve cada una).
 
-> Este repo (`PromptCorn`) es el **repo del backend** y lo mantiene la Persona A. El frontend vive en un repo aparte de la Persona B.
+> **Un solo repo para todo el proyecto** (`PromptCorn`): backend, chat y frontend, cada parte en su carpeta. Lo administra la Persona A; B entra como colaborador.
 
 ## Persona A: datos, modelo de ML y herramientas del backend
 
@@ -26,16 +26,16 @@ Dos integrantes, división por capas. **El único punto de contacto son los cont
 ## Persona B: conversación, frontend y documentación de producto
 
 - **Lambda del chat** (orquestador): prompt del sistema, tool calling con Groq, memoria en la tabla `Conversaciones` (de B).
-- **Frontend:** prototipo del chat web (Lovable o Figma Make) conectado a la API real.
+- **Frontend:** prototipo del chat web en `/frontend`, conectado a la API real.
 - **Documentación:** Parte A completa (benchmark, historias de usuario, propuesta de valor, MVP); en la Parte B, el frontend y la descripción del workflow y las APIs.
 - **Pruebas:** README del frontend y escenarios Gherkin HU5–HU8.
 
 ## Reglas para no bloquearse
 
 - **Contratos primero.** B desarrolla contra simulaciones que devuelven un JSON fijo; A construye las versiones reales; se cambian las URLs por variables de entorno.
-- **Propiedad de carpetas.** A es dueño de `/ml` y `/tools` (y de este repo); B de `/chat` y del repo del frontend. Cada uno en su rama, integración por pull request, sin editar lo del otro.
+- **Propiedad de carpetas.** A es dueño de `/ml`, `/tools` y `/scripts`; B de `/chat` y `/frontend`. Cada uno en su rama, integración por pull request, sin editar lo del otro.
 - **Una sola cuenta AWS con prefijos:** `promptcorn-tools-...` (A) y `promptcorn-chat-...` (B).
-- **Secretos** (Groq, TMDB) en SSM Parameter Store. Nada de llaves ni datos en los repos públicos.
+- **Secretos** (Groq, TMDB) en SSM Parameter Store. Nada de llaves ni datos en el repo (es público).
 - **Sincronización** de 15 minutos al mediodía y en la noche: qué está listo y qué falta.
 
 ## Plan por días (referencial)

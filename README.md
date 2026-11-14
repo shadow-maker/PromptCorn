@@ -33,6 +33,8 @@ docs/
 scripts/          descarga de datos y consolidación del catálogo
 ml/               entrenamiento y evaluación del modelo (entrenar.py, metricas.json)
 tools/recomendar/ Lambda /recomendar (handler.py, recomendador.py, empaquetar.sh, eventos/)
+chat/             Lambda del chat con Groq (Persona B)
+frontend/         chat web (Persona B)
 tests/            pruebas (python -m unittest discover -s tests)
 data/, dist/      (no versionados) datos y paquetes para AWS
 ```
