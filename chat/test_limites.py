@@ -9,6 +9,7 @@ os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
 os.environ.setdefault("AWS_ACCESS_KEY_ID", "testing")
 os.environ.setdefault("AWS_SECRET_ACCESS_KEY", "testing")
 os.environ.setdefault("GROQ_API_KEY", "test-key-for-mocks")
+os.environ["DEPURAR"] = "1"
 
 import lambda_function  # noqa: E402
 from lambda_function import lambda_handler, para_llm  # noqa: E402
@@ -117,11 +118,18 @@ class TestLimites(unittest.TestCase):
     @patch("lambda_function.obtener_conversacion", return_value=[])
     @patch("lambda_function.consultar_groq", side_effect=ValueError("algo raro"))
     def test_detalle_del_error_solo_con_depurar(self, *_):
-        r = lambda_handler(evento("hola"), None)
-        self.assertNotIn("detalle", json.loads(r["body"]))
-        r = lambda_handler({"body": json.dumps({"usuario_id": "u1", "mensaje": "hola", "depurar": True})}, None)
-        self.assertEqual(r["statusCode"], 500)
+        contexto = SimpleNamespace(aws_request_id="req-123")
+        con_depurar = {"body": json.dumps({"usuario_id": "u1", "mensaje": "hola", "depurar": True})}
+        r = lambda_handler(evento("hola"), contexto)
+        body = json.loads(r["body"])
+        self.assertNotIn("detalle", body)
+        self.assertEqual(body["id_solicitud"], "req-123")
+        r = lambda_handler(con_depurar, contexto)
         self.assertIn("ValueError: algo raro", json.loads(r["body"])["detalle"])
+        # si el servidor no habilita la depuración, el cliente no puede activarla
+        with patch.dict(os.environ, {"DEPURAR": "0"}):
+            r = lambda_handler(con_depurar, contexto)
+            self.assertNotIn("detalle", json.loads(r["body"]))
 
 
 if __name__ == "__main__":

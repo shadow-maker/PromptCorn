@@ -1,5 +1,6 @@
 
 import json
+import os
 import time
 import traceback
 
@@ -128,6 +129,15 @@ def para_llm(valor):
     if isinstance(valor, list):
         return [para_llm(v) for v in valor]
     return valor
+
+
+def depuracion_activa(body):
+    """La depuración la habilita el servidor (variable DEPURAR=1); el cliente solo puede pedirla."""
+    return (
+        os.getenv("DEPURAR") == "1"
+        and isinstance(body, dict)
+        and bool(body.get("depurar"))
+    )
 
 
 def consultar_con_reintento(messages, traza, intentos=3):
@@ -425,8 +435,8 @@ def lambda_handler(event, context):
             "body": json.dumps({
                 "usuario_id": usuario_id,
                 "respuesta": respuesta,
-                # "depurar": true en el request devuelve la traza (pruebas sin acceso a CloudWatch)
-                **({"traza": traza} if body.get("depurar") else {})
+                # Traza en la respuesta: solo con DEPURAR=1 en la Lambda y "depurar": true en el request
+                **({"traza": traza} if depuracion_activa(body) else {})
             }, ensure_ascii=False)
         }
 
@@ -461,9 +471,13 @@ def lambda_handler(event, context):
                 }, ensure_ascii=False)
             }
 
-        cuerpo_error = {"error": "Error interno del servidor."}
-        # Con "depurar": true se devuelve el detalle (pruebas sin acceso a CloudWatch).
-        if isinstance(body_recibido, dict) and body_recibido.get("depurar"):
+        # El detalle completo queda en CloudWatch; al cliente solo un id para encontrarlo.
+        cuerpo_error = {
+            "error": "Error interno del servidor.",
+            "id_solicitud": getattr(context, "aws_request_id", None)
+        }
+        # Detalle en la respuesta solo si el servidor lo permite (DEPURAR=1) y el request lo pide.
+        if depuracion_activa(body_recibido):
             cuerpo_error["detalle"] = f"{type(error).__name__}: {str(error)[:800]}"
 
         return {

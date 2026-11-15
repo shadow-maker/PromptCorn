@@ -109,6 +109,7 @@ functions:
       GROQ_API_KEY: ${env:GROQ_API_KEY}
       GROQ_MODEL: ${param:groqModel}
       MOCK_MODE: "false"
+      DEPURAR: "1"                 # traza y detalle de errores con "depurar": true; poner "0" antes de la demo
       API_TOOLS_URL:               # la misma API: https://<id>.execute-api.<región>.amazonaws.com
         Fn::Join:
           - ""
