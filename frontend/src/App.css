@@ -165,6 +165,66 @@
   overflow-wrap: anywhere;
 }
 
+/* Respuestas del bot en Markdown (negritas, listas, tablas) */
+.message-row.assistant .message-bubble {
+  white-space: normal;
+}
+
+.message-bubble p {
+  margin: 0 0 8px;
+}
+
+.message-bubble p:last-child,
+.message-bubble ul:last-child,
+.message-bubble ol:last-child {
+  margin-bottom: 0;
+}
+
+.message-bubble ul,
+.message-bubble ol {
+  margin: 4px 0 8px;
+  padding-left: 20px;
+}
+
+.message-bubble li {
+  margin: 2px 0;
+}
+
+.message-bubble strong {
+  color: #ffffff;
+}
+
+.message-bubble blockquote {
+  margin: 8px 0;
+  padding-left: 12px;
+  border-left: 3px solid #7651c8;
+  color: #d4d7e1;
+}
+
+.message-bubble a {
+  color: #b9a2f0;
+}
+
+.message-bubble table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 6px 0 10px;
+  font-size: 13px;
+}
+
+.message-bubble th,
+.message-bubble td {
+  border: 1px solid #454c60;
+  padding: 5px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.message-bubble th {
+  background: #323950;
+}
+
 .message-row.user .message-bubble {
   background: #7651c8;
   border-radius: 14px 4px 14px 14px;

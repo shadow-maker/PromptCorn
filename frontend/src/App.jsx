@@ -1,6 +1,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -164,7 +166,20 @@ function App() {
                   <span className="message-author">
                     {message.role === "assistant" ? "PromptCorn" : "Tú"}
                   </span>
-                  <div className="message-bubble">{message.content}</div>
+                  <div className="message-bubble">
+                    {message.role === "assistant" ? (
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          a: (props) => <a {...props} target="_blank" rel="noreferrer" />,
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    ) : (
+                      message.content
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

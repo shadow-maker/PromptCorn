@@ -1,5 +1,6 @@
 
 import json
+import traceback
 
 from groq_client import consultar_groq
 from system_prompt import SYSTEM_PROMPT
@@ -18,205 +19,107 @@ GENEROS = [
     "Western",
 ]
 
-ID_PELICULA = {
-    "type": "integer",
-    "description": (
-        "id de la película, tal como lo devolvió buscar_pelicula, "
-        "recomendar u obtener_historial. Nunca lo inventes."
-    )
-}
+ID = {"type": "integer", "description": "id devuelto por otra herramienta."}
 
-TOOLS = [
-    {
+
+def _herramienta(nombre, descripcion, propiedades, requeridos=()):
+    return {
         "type": "function",
         "function": {
-            "name": "recomendar",
-            "description": (
-                "Recomienda películas con el modelo de ML de PromptCorn. "
-                "Ya conoce las notas, las películas vistas y las plataformas "
-                "del usuario: solo pásale los filtros que el usuario pidió. "
-                "Excluye sola lo visto y lo recomendado en las últimas 24 h, "
-                "así que para 'dame otras opciones' basta con volver a llamarla."
-            ),
+            "name": nombre,
+            "description": descripcion,
             "parameters": {
                 "type": "object",
-                "properties": {
-                    "cantidad": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 10,
-                        "description": "Cuántas películas devolver (por defecto 3)."
-                    },
-                    "generos": {
-                        "type": "array",
-                        "items": {"type": "string", "enum": GENEROS},
-                        "description": "Al menos uno de estos géneros."
-                    },
-                    "duracion_max": {
-                        "type": "integer",
-                        "description": "Duración máxima en minutos."
-                    },
-                    "anio_min": {
-                        "type": "integer",
-                        "description": "Año de estreno mínimo."
-                    },
-                    "anio_max": {
-                        "type": "integer",
-                        "description": "Año de estreno máximo."
-                    },
-                    "plataformas": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": (
-                            "Solo si el usuario pide plataformas distintas a "
-                            "las suyas para esta consulta. [] = cualquiera."
-                        )
-                    },
-                    "parecido_a": {
-                        **ID_PELICULA,
-                        "description": (
-                            "id de una película para recomendar parecidas a "
-                            "ella. Obténlo antes con buscar_pelicula."
-                        )
-                    },
-                    "excluir": {
-                        "type": "array",
-                        "items": {"type": "integer"},
-                        "description": "ids que no deben salir."
-                    }
-                },
-                "required": [],
-                "additionalProperties": False
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "buscar_pelicula",
-            "description": (
-                "Busca una película por título (en español o inglés) y "
-                "devuelve su id. Úsala antes de cualquier herramienta que "
-                "necesite un id que aún no tienes."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "titulo": {
-                        "type": "string",
-                        "description": "Título de la película."
-                    },
-                    "anio": {
-                        "type": "integer",
-                        "description": "Año de estreno, si el usuario lo dijo."
-                    }
-                },
-                "required": ["titulo"],
-                "additionalProperties": False
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "ver_donde_ver",
-            "description": (
-                "Plataformas de streaming en Perú donde se puede ver hoy "
-                "una película (suscripción o gratis)."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {"id": ID_PELICULA},
-                "required": ["id"],
-                "additionalProperties": False
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "registrar_vista",
-            "description": (
-                "Registra que el usuario vio una película (con su nota, que "
-                "es lo que aprende el modelo) o que no le interesa."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "id": ID_PELICULA,
-                    "estado": {
-                        "type": "string",
-                        "enum": ["visto", "no_me_interesa"],
-                        "description": "Por defecto visto."
-                    },
-                    "calificacion": {
-                        "type": "number",
-                        "minimum": 0.5,
-                        "maximum": 5,
-                        "description": "Nota de 0.5 a 5 (en medios puntos)."
-                    }
-                },
-                "required": ["id"],
-                "additionalProperties": False
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "guardar_plataformas",
-            "description": (
-                "Guarda las plataformas de streaming que tiene el usuario. "
-                "Las recomendaciones se filtran por ellas."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "plataformas": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Nombres de plataformas, p. ej. Netflix, Prime Video, HBO Max, Disney+."
-                    },
-                    "accion": {
-                        "type": "string",
-                        "enum": ["reemplazar", "agregar", "quitar"],
-                        "description": "Por defecto reemplazar la lista completa."
-                    }
-                },
-                "required": ["plataformas"],
-                "additionalProperties": False
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "obtener_historial",
-            "description": (
-                "Recomendaciones pasadas (con fecha, plataforma y motivo) "
-                "y películas que el usuario registró como vistas."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "tipo": {
-                        "type": "string",
-                        "enum": ["recomendaciones", "vistas", "todo"],
-                        "description": "Por defecto todo."
-                    },
-                    "limite": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 50,
-                        "description": "Cuántas de cada tipo (por defecto 10)."
-                    }
-                },
-                "required": [],
+                "properties": propiedades,
+                "required": list(requeridos),
                 "additionalProperties": False
             }
         }
     }
+
+
+TOOLS = [
+    _herramienta(
+        "recomendar",
+        "Recomienda películas con el modelo de ML. Ya conoce notas, vistas y "
+        "plataformas del usuario; pasa solo los filtros pedidos. No repite lo "
+        "recomendado en 24 h.",
+        {
+            "cantidad": {"type": "integer", "minimum": 1, "maximum": 10,
+                         "description": "Por defecto 3."},
+            "generos": {"type": "array",
+                        "items": {"type": "string", "enum": GENEROS}},
+            "duracion_max": {"type": "integer", "description": "Minutos."},
+            "anio_min": {"type": "integer"},
+            "anio_max": {"type": "integer"},
+            "plataformas": {"type": "array", "items": {"type": "string"},
+                            "description": "Solo si pide otras distintas a las suyas; [] = cualquiera."},
+            "parecido_a": {"type": "integer",
+                           "description": "id de una película para recomendar parecidas."},
+            "excluir": {"type": "array", "items": {"type": "integer"}}
+        }
+    ),
+    _herramienta(
+        "buscar_pelicula",
+        "Busca una película por título (español o inglés) y devuelve su id.",
+        {"titulo": {"type": "string"},
+         "anio": {"type": "integer", "description": "Si el usuario lo dijo."}},
+        ["titulo"]
+    ),
+    _herramienta(
+        "ver_donde_ver",
+        "Plataformas de Perú donde está hoy una película.",
+        {"id": ID},
+        ["id"]
+    ),
+    _herramienta(
+        "registrar_vista",
+        "Registra una película vista (con nota, que es lo que aprende el modelo) "
+        "o que no le interesa.",
+        {"id": ID,
+         "estado": {"type": "string", "enum": ["visto", "no_me_interesa"]},
+         "calificacion": {"type": "number", "minimum": 0.5, "maximum": 5}},
+        ["id"]
+    ),
+    _herramienta(
+        "guardar_plataformas",
+        "Guarda las plataformas de streaming del usuario.",
+        {"plataformas": {"type": "array", "items": {"type": "string"}},
+         "accion": {"type": "string", "enum": ["reemplazar", "agregar", "quitar"]}},
+        ["plataformas"]
+    ),
+    _herramienta(
+        "obtener_historial",
+        "Recomendaciones pasadas y películas vistas.",
+        {"tipo": {"type": "string", "enum": ["recomendaciones", "vistas", "todo"]},
+         "limite": {"type": "integer", "minimum": 1, "maximum": 50}}
+    ),
 ]
+
+
+# ============================================================
+# RESULTADOS COMPACTOS PARA EL LLM
+# ============================================================
+
+# Campos que el LLM no usa: se quitan para ahorrar tokens (Groq limita
+# los tokens por minuto y cada vuelta de herramientas reenvía todo).
+CAMPOS_SOLO_FRONTEND = {"poster", "afinidad"}
+MAX_SINOPSIS_LLM = 160
+
+
+def para_llm(valor):
+    if isinstance(valor, dict):
+        compacto = {}
+        for clave, v in valor.items():
+            if clave in CAMPOS_SOLO_FRONTEND:
+                continue
+            if clave == "sinopsis" and isinstance(v, str) and len(v) > MAX_SINOPSIS_LLM:
+                v = v[:MAX_SINOPSIS_LLM].rsplit(" ", 1)[0] + "…"
+            compacto[clave] = para_llm(v)
+        return compacto
+    if isinstance(valor, list):
+        return [para_llm(v) for v in valor]
+    return valor
 
 
 # ============================================================
@@ -275,10 +178,14 @@ def procesar_mensaje(usuario_id, mensaje):
             return contenido
 
         # Incorporar la respuesta de Groq con las llamadas
-        # a herramientas al historial de mensajes.
-        messages.append(
-            respuesta.model_dump(exclude_none=True)
-        )
+        # a herramientas al historial de mensajes (sin el razonamiento
+        # del modelo: no hace falta reenviarlo y gasta tokens).
+        mensaje_asistente = respuesta.model_dump(exclude_none=True)
+        messages.append({
+            clave: valor
+            for clave, valor in mensaje_asistente.items()
+            if clave in ("role", "content", "tool_calls")
+        })
 
         # Ejecutar cada herramienta solicitada por Groq.
         for tool_call in respuesta.tool_calls:
@@ -303,7 +210,7 @@ def procesar_mensaje(usuario_id, mensaje):
                 )
 
                 contenido_resultado = json.dumps(
-                    resultado,
+                    para_llm(resultado),
                     ensure_ascii=False
                 )
 
@@ -368,6 +275,8 @@ def lambda_handler(event, context):
         ),
         "Access-Control-Max-Age": "86400"
     }
+
+    usuario_id = None
 
     try:
 
@@ -452,7 +361,26 @@ def lambda_handler(event, context):
             }, ensure_ascii=False)
         }
 
-    except Exception:
+    except Exception as error:
+
+        # Queda en CloudWatch (serverless logs -f chat).
+        traceback.print_exc()
+
+        # Límite de uso de Groq (tokens o pedidos por minuto): no es una
+        # falla del sistema, se le pide al usuario que reintente.
+        if type(error).__name__ == "RateLimitError":
+            return {
+                "statusCode": 200,
+                "headers": headers,
+                "body": json.dumps({
+                    "usuario_id": usuario_id,
+                    "respuesta": (
+                        "Estoy atendiendo muchas consultas en este momento. "
+                        "Dame unos segundos y vuelve a enviar tu mensaje, por favor."
+                    ),
+                    "reintentar": True
+                }, ensure_ascii=False)
+            }
 
         return {
             "statusCode": 500,

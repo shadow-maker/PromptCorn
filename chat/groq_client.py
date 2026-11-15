@@ -76,6 +76,13 @@ def consultar_groq(messages, tools=None):
         "max_completion_tokens": 1024
     }
 
+    # gpt-oss razona antes de responder y esos tokens cuentan para el limite
+    # por minuto de Groq: con esfuerzo "low" gasta mucho menos.
+    if MODEL.startswith("openai/gpt-oss"):
+        parametros["extra_body"] = {
+            "reasoning_effort": os.getenv("GROQ_REASONING_EFFORT", "low")
+        }
+
     # Incorporar herramientas cuando esten disponibles
     if tools is not None:
         parametros["tools"] = tools
