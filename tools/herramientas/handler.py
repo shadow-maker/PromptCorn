@@ -375,6 +375,12 @@ def lambda_handler(event, context):
         else:
             body = dict(event)
             nombre = body.pop("herramienta", None)
+        if via_api and nombre == "reiniciar_usuario":
+            # Acción destructiva: solo JSON. Un formulario HTML de otro sitio no puede mandar este Content-Type
+            # sin pasar por CORS (que solo admite el sitio de PromptCorn).
+            tipo = {k.lower(): v for k, v in (event.get("headers") or {}).items()}.get("content-type", "")
+            if not tipo.lower().startswith("application/json"):
+                raise ErrorHerramienta(415, "reiniciar_usuario solo acepta Content-Type: application/json.")
         if nombre not in HERRAMIENTAS:
             raise ErrorHerramienta(404, f"Herramienta no reconocida: {nombre}.", herramientas=list(HERRAMIENTAS))
         estado, respuesta = 200, HERRAMIENTAS[nombre](body)

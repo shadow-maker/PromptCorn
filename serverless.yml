@@ -27,7 +27,13 @@ provider:
   iam:
     role: arn:aws:iam::${aws:accountId}:role/LabRole   # Learner Lab no deja crear roles
   httpApi:
-    cors: true
+    cors:                        # solo el sitio de PromptCorn (y localhost para desarrollo) puede llamar desde un navegador
+      allowedOrigins:
+        - http://${param:bucketWeb}.s3-website-us-east-1.amazonaws.com
+        - http://localhost:5173
+        - http://localhost:4173
+      allowedMethods: [POST, OPTIONS]
+      allowedHeaders: [Content-Type]
   logRetentionInDays: 7
 
 # El código se empaqueta antes (despliegue/desplegar.sh) con las dependencias para Linux;
