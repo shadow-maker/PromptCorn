@@ -96,7 +96,9 @@ frontend() {
   echo "  API del chat: $api/chat"
   (cd "$RAIZ/frontend" && npm ci --silent && VITE_API_URL="$api/chat" npm run build --silent)
   # Documentación interactiva (Swagger UI en /docs/) con la URL real de la API
+  mkdir -p "$RAIZ/frontend/dist/docs"
   sed "s|__API_URL__|$api|" "$RAIZ/docs/openapi.yaml" > "$RAIZ/frontend/dist/docs/openapi.yaml"
+  [ -s "$RAIZ/frontend/dist/docs/openapi.yaml" ] || falla "no se pudo generar docs/openapi.yaml"
   aws s3 sync "$RAIZ/frontend/dist/" "s3://$bucket/" --delete --only-show-errors --region "$REGION"
   echo "  Sitio: $sitio"
   echo "  Documentación de la API: $sitio/docs/"
@@ -118,18 +120,29 @@ datos() {
 }
 
 # ---------- main ----------
+# Todo va dentro de main() y la última línea es "main; exit": bash lee la función completa antes de
+# ejecutarla, así un git pull que modifique este mismo archivo no lo deja a medio leer.
 
-if [ "${SIN_PULL:-0}" != 1 ] && [ "${1:-todo}" != datos ]; then
-  titulo "git pull"
-  git -C "$RAIZ" pull --ff-only
-fi
+main() {
+  if [ "${SIN_PULL:-0}" != 1 ] && [ "${1:-todo}" != datos ]; then
+    titulo "git pull"
+    local antes; antes=$(git -C "$RAIZ" rev-parse HEAD)
+    git -C "$RAIZ" pull --ff-only
+    if [ "$(git -C "$RAIZ" rev-parse HEAD)" != "$antes" ]; then
+      echo "  (hay cambios nuevos: se vuelve a ejecutar con la versión actualizada del script)"
+      SIN_PULL=1 exec "$RAIZ/despliegue/desplegar.sh" "$@"
+    fi
+  fi
 
-case "${1:-todo}" in
-  todo) backend; [ "${SOLO_EMPAQUETAR:-0}" = 1 ] || frontend ;;
-  backend) backend ;;
-  frontend) frontend ;;
-  datos) datos ;;
-  *) falla "uso: despliegue/desplegar.sh [todo | backend | frontend | datos]" ;;
-esac
+  case "${1:-todo}" in
+    todo) backend; [ "${SOLO_EMPAQUETAR:-0}" = 1 ] || frontend ;;
+    backend) backend ;;
+    frontend) frontend ;;
+    datos) datos ;;
+    *) falla "uso: despliegue/desplegar.sh [todo | backend | frontend | datos]" ;;
+  esac
 
-titulo "Listo"
+  titulo "Listo"
+}
+
+main "$@"; exit

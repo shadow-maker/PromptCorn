@@ -6,11 +6,27 @@ import remarkGfm from "remark-gfm";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
-const USER_ID =
-  localStorage.getItem("promptcorn_user_id") ||
-  `usuario_${crypto.randomUUID()}`;
+// crypto.randomUUID solo existe en páginas HTTPS (o localhost); el sitio en S3 es HTTP.
+// getRandomValues sí está disponible en ambos.
+function nuevoId() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  const bytes = window.crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
 
-localStorage.setItem("promptcorn_user_id", USER_ID);
+function leerUsuario() {
+  try {
+    const guardado = localStorage.getItem("promptcorn_user_id");
+    if (guardado) return guardado;
+    const nuevo = `usuario_${nuevoId()}`;
+    localStorage.setItem("promptcorn_user_id", nuevo);
+    return nuevo;
+  } catch {
+    return `usuario_${nuevoId()}`; // sin localStorage (modo privado estricto): id solo para esta sesión
+  }
+}
+
+const USER_ID = leerUsuario();
 
 const INITIAL_MESSAGE = {
   id: 1,
