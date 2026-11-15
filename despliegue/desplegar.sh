@@ -127,7 +127,20 @@ main() {
   if [ "${SIN_PULL:-0}" != 1 ] && [ "${1:-todo}" != datos ]; then
     titulo "git pull"
     local antes; antes=$(git -C "$RAIZ" rev-parse HEAD)
-    git -C "$RAIZ" pull --ff-only
+    # Si serverless.yml tiene cambios locales (p. ej. la org puesta a mano en esta máquina), se apartan
+    # durante el pull y se vuelven a aplicar después; así el pull no falla.
+    local apartado=0
+    if ! git -C "$RAIZ" diff --quiet -- serverless.yml; then
+      git -C "$RAIZ" stash push --quiet -m "desplegar.sh: cambios locales de serverless.yml" -- serverless.yml
+      apartado=1
+    fi
+    if ! git -C "$RAIZ" pull --ff-only; then
+      [ "$apartado" = 1 ] && git -C "$RAIZ" stash pop --quiet
+      falla "git pull falló: revisa los cambios locales con 'git status'"
+    fi
+    if [ "$apartado" = 1 ] && ! git -C "$RAIZ" stash pop --quiet; then
+      falla "no se pudieron reaplicar tus cambios locales de serverless.yml (conflicto): revisa 'git status' y 'git stash list'"
+    fi
     if [ "$(git -C "$RAIZ" rev-parse HEAD)" != "$antes" ]; then
       echo "  (hay cambios nuevos: se vuelve a ejecutar con la versión actualizada del script)"
       SIN_PULL=1 exec "$RAIZ/despliegue/desplegar.sh" "$@"
