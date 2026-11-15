@@ -1,0 +1,4 @@
+groq
+boto3
+requests
+pip install -r requirements.txt
