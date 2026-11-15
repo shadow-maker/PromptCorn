@@ -223,10 +223,10 @@ TOOLS = [
 # PROCESAMIENTO DEL MENSAJE CONVERSACIONAL
 # ============================================================
 
-def procesar_mensaje(user_id, mensaje):
+def procesar_mensaje(usuario_id, mensaje):
 
     # Recuperar el historial de conversación del usuario.
-    historial = obtener_conversacion(user_id)
+    historial = obtener_conversacion(usuario_id)
 
     messages = [
         {
@@ -249,7 +249,7 @@ def procesar_mensaje(user_id, mensaje):
     })
 
     # Guardar el mensaje del usuario.
-    guardar_mensaje(user_id, "user", mensaje)
+    guardar_mensaje(usuario_id, "user", mensaje)
 
     # Máximo de iteraciones para evitar ciclos infinitos.
     max_intentos = 5
@@ -267,7 +267,7 @@ def procesar_mensaje(user_id, mensaje):
             contenido = respuesta.content or ""
 
             guardar_mensaje(
-                user_id,
+                usuario_id,
                 "assistant",
                 contenido
             )
@@ -295,7 +295,7 @@ def procesar_mensaje(user_id, mensaje):
                     )
 
                 # Las herramientas son de un solo usuario (el fijo de la
-                # app): no se les manda el user_id del chat.
+                # app): no se les manda el usuario_id del chat.
 
                 resultado = ejecutar_herramienta(
                     nombre_herramienta,
@@ -344,7 +344,7 @@ def procesar_mensaje(user_id, mensaje):
     )
 
     guardar_mensaje(
-        user_id,
+        usuario_id,
         "assistant",
         mensaje_final
     )
@@ -405,13 +405,13 @@ def lambda_handler(event, context):
             }
 
         # Extraer datos de entrada.
-        user_id = body.get("user_id")
-        mensaje = body.get("message")
+        usuario_id = body.get("usuario_id")
+        mensaje = body.get("mensaje")
 
         # Validar campos obligatorios.
         if (
-            not isinstance(user_id, str)
-            or not user_id.strip()
+            not isinstance(usuario_id, str)
+            or not usuario_id.strip()
             or not isinstance(mensaje, str)
             or not mensaje.strip()
         ):
@@ -419,16 +419,16 @@ def lambda_handler(event, context):
                 "statusCode": 400,
                 "headers": headers,
                 "body": json.dumps({
-                    "error": "user_id y message son obligatorios."
+                    "error": "usuario_id y mensaje son obligatorios."
                 }, ensure_ascii=False)
             }
 
-        user_id = user_id.strip()
+        usuario_id = usuario_id.strip()
         mensaje = mensaje.strip()
 
         # Procesar la conversación.
         respuesta = procesar_mensaje(
-            user_id,
+            usuario_id,
             mensaje
         )
 
@@ -437,8 +437,8 @@ def lambda_handler(event, context):
             "statusCode": 200,
             "headers": headers,
             "body": json.dumps({
-                "user_id": user_id,
-                "response": respuesta
+                "usuario_id": usuario_id,
+                "respuesta": respuesta
             }, ensure_ascii=False)
         }
 

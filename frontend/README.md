@@ -67,12 +67,12 @@ El frontend envia una solicitud HTTP POST con esta estructura:
 
 ```json
 {
-  "user_id": "usuario_identificado",
-  "message": "Recomiendame una pelicula de ciencia ficcion"
+  "usuario_id": "usuario_identificado",
+  "mensaje": "Recomiendame una pelicula de ciencia ficcion"
 }
 ```
 
-Admite respuestas con los campos `response`, `message` o `respuesta`.
+La respuesta llega en el campo `respuesta` (contrato en `docs/contratos.md`).
 
 ## 8. Funcionalidades
 

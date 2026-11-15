@@ -65,8 +65,8 @@ function App() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            user_id: USER_ID,
-            message,
+            usuario_id: USER_ID,
+            mensaje: message,
           }),
         });
 
@@ -84,7 +84,7 @@ function App() {
         }
 
         assistantResponse =
-          data.response || data.message || data.respuesta;
+          data.respuesta || data.response || data.message;
 
         if (!assistantResponse) {
           throw new Error("El servidor no devolvió una respuesta válida.");

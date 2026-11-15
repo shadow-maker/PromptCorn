@@ -28,10 +28,10 @@ table = dynamodb.Table(TABLE_NAME)
 # 2. OBTENER HISTORIAL DE CONVERSACION
 # ==================================================
 
-def obtener_conversacion(user_id, limite=12):
+def obtener_conversacion(usuario_id, limite=12):
 
-    if not isinstance(user_id, str) or not user_id.strip():
-        raise ValueError("El user_id no es valido.")
+    if not isinstance(usuario_id, str) or not usuario_id.strip():
+        raise ValueError("El usuario_id no es valido.")
 
     if not isinstance(limite, int) or limite < 1:
         raise ValueError("El limite debe ser un entero positivo.")
@@ -39,7 +39,7 @@ def obtener_conversacion(user_id, limite=12):
     try:
 
         response = table.query(
-            KeyConditionExpression=Key("user_id").eq(user_id),
+            KeyConditionExpression=Key("usuario_id").eq(usuario_id),
             ScanIndexForward=False,
             Limit=limite
         )
@@ -52,8 +52,8 @@ def obtener_conversacion(user_id, limite=12):
 
         historial = [
             {
-                "role": item["role"],
-                "content": item["content"]
+                "role": item["rol"],
+                "content": item["contenido"]
             }
             for item in items
         ]
@@ -72,10 +72,10 @@ def obtener_conversacion(user_id, limite=12):
 # 3. GUARDAR MENSAJE EN DYNAMODB
 # ==================================================
 
-def guardar_mensaje(user_id, role, content):
+def guardar_mensaje(usuario_id, role, content):
 
-    if not isinstance(user_id, str) or not user_id.strip():
-        raise ValueError("El user_id no es valido.")
+    if not isinstance(usuario_id, str) or not usuario_id.strip():
+        raise ValueError("El usuario_id no es valido.")
 
     if role not in ["user", "assistant"]:
         raise ValueError("El role debe ser user o assistant.")
@@ -87,7 +87,7 @@ def guardar_mensaje(user_id, role, content):
         timezone.utc
     ).isoformat()
 
-    message_id = (
+    mensaje_id = (
         timestamp + "#" + str(uuid.uuid4())
     )
 
@@ -95,10 +95,10 @@ def guardar_mensaje(user_id, role, content):
 
         table.put_item(
             Item={
-                "user_id": user_id,
-                "message_id": message_id,
-                "role": role,
-                "content": content
+                "usuario_id": usuario_id,
+                "mensaje_id": mensaje_id,
+                "rol": role,
+                "contenido": content
             }
         )
 

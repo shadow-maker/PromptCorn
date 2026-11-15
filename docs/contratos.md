@@ -157,7 +157,7 @@ Si la película ya estaba registrada, se reemplaza: sirve para corregir una nota
 
 ## Chat (B → frontend)
 
-`POST /chat` con `{"user_id": "<id local del navegador>", "message": "texto"}` → `{"user_id": "...", "response": "texto del bot"}`. El `user_id` solo separa conversaciones en la memoria (`Conversaciones`). Las herramientas son de un solo usuario.
+`POST /chat` con `{"usuario_id": "<id local del navegador>", "mensaje": "texto"}` → `{"usuario_id": "...", "respuesta": "texto del bot"}`. Aquí `usuario_id` solo separa conversaciones en la memoria (`promptcorn-chat-conversaciones`). Las herramientas son de un solo usuario (`usuario-demo`).
 
 ## Tablas DynamoDB (de A)
 
@@ -168,5 +168,6 @@ Capacidad bajo demanda. Nombres con prefijo `promptcorn-tools-`. Un solo usuario
 | `promptcorn-tools-vistas` | PK `usuario_id` (S), SK `pelicula_id` (N) | `estado` (`visto` / `no_me_interesa`), `calificacion` (N 0.5–5, opcional), `fecha` (S, ISO) | `registrar_vista` | `recomendar` |
 | `promptcorn-tools-perfil` | PK `usuario_id` (S) | `plataformas` (L de S, nombres canónicos), `actualizado` (S) | `guardar_plataformas` | `recomendar` |
 | `promptcorn-tools-recomendaciones` | PK `usuario_id` (S), SK `sk` (S, `"<fecha ISO>#<id>"`) | `fecha`, `pelicula_id`, `titulo`, `anio`, `plataformas`, `afinidad`, `modo`, `motivo` (M) | `recomendar` | `recomendar` (últimas 24 h), `obtener_historial` |
+| `promptcorn-chat-conversaciones` (de B) | PK `usuario_id` (S), SK `mensaje_id` (S, `"<fecha ISO>#<uuid>"`) | `rol` (`user` / `assistant`), `contenido` | Lambda del chat | Lambda del chat (últimos 12 mensajes) |
 
 La SK de `Recomendaciones` empieza por la fecha. Así, "lo recomendado desde X" y el historial ordenado salen de una sola consulta por rango, sin escanear la tabla.

@@ -72,8 +72,8 @@ class TestLambda(unittest.TestCase):
 
         event = {
             "body": {
-                "user_id": "",
-                "message": ""
+                "usuario_id": "",
+                "mensaje": ""
             }
         }
 
@@ -107,8 +107,8 @@ class TestLambda(unittest.TestCase):
 
         event = {
             "body": {
-                "user_id": "usuario_001",
-                "message": "Hola"
+                "usuario_id": "usuario_001",
+                "mensaje": "Hola"
             }
         }
 
@@ -119,7 +119,7 @@ class TestLambda(unittest.TestCase):
         self.assertEqual(respuesta["statusCode"], 200)
 
         self.assertEqual(
-            body["response"],
+            body["respuesta"],
             "Hola, soy PromptCorn. ¿Que pelicula buscas?"
         )
 
@@ -160,8 +160,8 @@ class TestLambda(unittest.TestCase):
 
         event = {
             "body": {
-                "user_id": "usuario_001",
-                "message": "Recomiendame una pelicula"
+                "usuario_id": "usuario_001",
+                "mensaje": "Recomiendame una pelicula"
             }
         }
 
@@ -172,7 +172,7 @@ class TestLambda(unittest.TestCase):
         self.assertEqual(respuesta["statusCode"], 200)
 
         self.assertEqual(
-            body["response"],
+            body["respuesta"],
             "Te puedo recomendar Interstellar."
         )
 
@@ -250,8 +250,8 @@ class TestLambda(unittest.TestCase):
 
         event = {
             "body": {
-                "user_id": "usuario_001",
-                "message": "Busca Interstellar"
+                "usuario_id": "usuario_001",
+                "mensaje": "Busca Interstellar"
             }
         }
 
@@ -262,12 +262,12 @@ class TestLambda(unittest.TestCase):
         self.assertEqual(respuesta["statusCode"], 200)
 
         self.assertEqual(
-            body["response"],
+            body["respuesta"],
             "Interstellar es una pelicula de 2014."
         )
 
         # Verificar ejecucion de la herramienta.
-        # Las herramientas son de un solo usuario: no reciben user_id.
+        # Las herramientas son de un solo usuario: no reciben usuario_id.
         mock_ejecutor.assert_called_once_with(
             "buscar_pelicula",
             {
@@ -358,8 +358,8 @@ class TestLambda(unittest.TestCase):
 
         event = {
             "body": {
-                "user_id": "usuario_001",
-                "message": "Busca Interstellar"
+                "usuario_id": "usuario_001",
+                "mensaje": "Busca Interstellar"
             }
         }
 
@@ -370,7 +370,7 @@ class TestLambda(unittest.TestCase):
         self.assertEqual(respuesta["statusCode"], 200)
 
         self.assertEqual(
-            body["response"],
+            body["respuesta"],
             "No pude consultar la pelicula en este momento."
         )
 

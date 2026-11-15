@@ -23,12 +23,12 @@ class TestConversationMemory(unittest.TestCase):
         mock_query.return_value = {
             "Items": [
                 {
-                    "role": "assistant",
-                    "content": "Hola, ¿en qué puedo ayudarte?"
+                    "rol": "assistant",
+                    "contenido": "Hola, ¿en qué puedo ayudarte?"
                 },
                 {
-                    "role": "user",
-                    "content": "Quiero ver una película."
+                    "rol": "user",
+                    "contenido": "Quiero ver una película."
                 }
             ]
         }
@@ -72,8 +72,8 @@ class TestConversationMemory(unittest.TestCase):
 
         self.assertEqual(historial, [])
 
-    # PRUEBA 3: Validar user_id al consultar
-    def test_user_id_invalido(self):
+    # PRUEBA 3: Validar usuario_id al consultar
+    def test_usuario_id_invalido(self):
 
         with self.assertRaises(ValueError):
             conversation_memory.obtener_conversacion("")
@@ -101,15 +101,15 @@ class TestConversationMemory(unittest.TestCase):
 
         item = mock_put.call_args.kwargs["Item"]
 
-        self.assertEqual(item["user_id"], "usuario_001")
-        self.assertEqual(item["role"], "user")
+        self.assertEqual(item["usuario_id"], "usuario_001")
+        self.assertEqual(item["rol"], "user")
         self.assertEqual(
-            item["content"],
+            item["contenido"],
             "Quiero ver Interstellar."
         )
 
-        # Verificar que message_id tenga timestamp y UUID
-        self.assertIn("#", item["message_id"])
+        # Verificar que mensaje_id tenga timestamp y UUID
+        self.assertIn("#", item["mensaje_id"])
 
     # PRUEBA 6: Rechazar un role inválido
     def test_role_invalido(self):

@@ -171,7 +171,7 @@ chat/empaquetar.sh        # -> dist/promptcorn-chat-python3.14.zip (y 3.13)
 ```
 
 ### 1. Tabla de memoria
-DynamoDB → **Create table** con nombre `promptcorn-chat-conversaciones`, partition key `user_id` (String), sort key `message_id` (String) y capacidad On-demand.
+DynamoDB → **Create table** con nombre `promptcorn-chat-conversaciones`, partition key `usuario_id` (String), sort key `mensaje_id` (String) y capacidad On-demand.
 
 ### 2. Función Lambda
 1. **Create function:**
@@ -194,7 +194,7 @@ DynamoDB → **Create table** con nombre `promptcorn-chat-conversaciones`, parti
 
 5. **Test** con el evento:
 ```json
-{"body": "{\"user_id\": \"prueba\", \"message\": \"Recomiéndame una comedia corta\"}"}
+{"body": "{\"usuario_id\": \"prueba\", \"mensaje\": \"Recomiéndame una comedia corta\"}"}
 ```
 
 ### 3. API del chat
