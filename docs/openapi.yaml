@@ -26,6 +26,8 @@ tags:
     description: Recomendaciones personalizadas
   - name: Herramientas
     description: Datos del catálogo y del usuario
+  - name: Administración
+    description: Acciones del frontend que no usa el chat
 
 paths:
   /chat:
@@ -292,6 +294,42 @@ paths:
                         titulo: { type: string }
                         estado: { type: string }
                         calificacion: { type: number, nullable: true }
+        "400": { $ref: "#/components/responses/Error400" }
+
+  /reiniciar_usuario:
+    post:
+      tags: [Administración]
+      summary: Borrar todo el historial del usuario (volver al arranque en frío)
+      description: |
+        Borra las vistas y notas, las plataformas y las recomendaciones del usuario fijo. Es la acción del botón
+        "Reiniciar perfil" del frontend; **no** es una herramienta del chat (el LLM no la conoce).
+        Exige `confirmar: "BORRAR"`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmar]
+              properties:
+                confirmar: { type: string, enum: [BORRAR] }
+            example: { confirmar: BORRAR }
+      responses:
+        "200":
+          description: Cuántos ítems se borraron de cada tabla
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  borrados:
+                    type: object
+                    properties:
+                      vistas: { type: integer }
+                      recomendaciones: { type: integer }
+                      perfil: { type: integer }
+              example: { ok: true, borrados: { vistas: 2, recomendaciones: 18, perfil: 1 } }
         "400": { $ref: "#/components/responses/Error400" }
 
 components:

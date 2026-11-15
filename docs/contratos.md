@@ -158,6 +158,12 @@ Si la película ya estaba registrada, se reemplaza: sirve para corregir una nota
 }
 ```
 
+## `reiniciar_usuario` (no es herramienta del chat)
+
+`POST /reiniciar_usuario` con `{"confirmar": "BORRAR"}` → `{"ok": true, "borrados": {"vistas": n, "recomendaciones": n, "perfil": 0|1}}`.
+
+Borra todo lo del usuario fijo en `Vistas`, `Perfil` y `Recomendaciones`, y vuelve al arranque en frío. Lo usa el botón **Reiniciar perfil** del frontend, con un modal de confirmación; además, el frontend crea un `usuario_id` de chat nuevo para que la memoria también empiece de cero. El LLM no la conoce: no está en sus herramientas. Sin `confirmar` responde 400 y no borra nada.
+
 ## Chat (B → frontend)
 
 `POST /chat` con `{"usuario_id": "<id local del navegador>", "mensaje": "texto"}` → `{"usuario_id": "...", "respuesta": "texto del bot"}`. Con `"depurar": true` también devuelve `traza`: cada llamada a Groq y cada herramienta con sus argumentos y resultado. Esa misma traza queda siempre en CloudWatch (`serverless logs -f chat`), una línea JSON por turno. Aquí `usuario_id` solo separa conversaciones en la memoria (`promptcorn-chat-conversaciones`). Las herramientas son de un solo usuario (`usuario-demo`).

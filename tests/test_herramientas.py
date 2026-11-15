@@ -75,6 +75,11 @@ class AlmacenMemoria:
     def recomendaciones_de(self, usuario, limite):
         return sorted(self.recs, key=lambda r: r["sk"], reverse=True)[:limite]
 
+    def borrar_usuario(self, usuario):
+        borrados = {"vistas": len(self.vistas), "recomendaciones": len(self.recs), "perfil": int(bool(self.perfil))}
+        self.vistas, self.recs, self.perfil = {}, [], []
+        return borrados
+
 
 class Base(unittest.TestCase):
     @classmethod
@@ -238,6 +243,24 @@ class TestHistorial(Base):
         self.assertEqual(r["vistas"][0]["titulo"], "Interestelar")
         _, r = self.llamar("obtener_historial", tipo="vistas", limite=1)
         self.assertNotIn("recomendaciones", r)
+
+
+class TestReiniciar(Base):
+    def test_exige_confirmacion(self):
+        self.llamar("registrar_vista", id=8318, calificacion=5)
+        estado, r = self.llamar("reiniciar_usuario")
+        self.assertEqual(estado, 400)
+        self.assertEqual(len(h._almacen.vistas), 1)  # no borró nada
+
+    def test_borra_todo(self):
+        self.llamar("registrar_vista", id=8318, calificacion=5)
+        self.llamar("guardar_plataformas", plataformas=["Netflix"])
+        h._almacen.recs = [{"sk": "2026-11-15T10:00:00Z#1", "pelicula_id": 1}]
+        estado, r = self.llamar("reiniciar_usuario", confirmar="BORRAR")
+        self.assertEqual(estado, 200)
+        self.assertEqual(r["borrados"], {"vistas": 1, "recomendaciones": 1, "perfil": 1})
+        _, hist = self.llamar("obtener_historial")
+        self.assertEqual((hist["vistas"], hist["recomendaciones"]), ([], []))
 
 
 class TestEntrada(Base):

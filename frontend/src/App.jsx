@@ -5,6 +5,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
+// Misma API que el chat: .../chat -> .../reiniciar_usuario
+const RESET_URL = API_URL ? API_URL.replace(/\/chat\/?$/, "") + "/reiniciar_usuario" : "";
 
 // crypto.randomUUID solo existe en páginas HTTPS (o localhost); el sitio en S3 es HTTP.
 // getRandomValues sí está disponible en ambos.
@@ -26,7 +28,16 @@ function leerUsuario() {
   }
 }
 
-const USER_ID = leerUsuario();
+// Id nuevo de conversación: la memoria del bot empieza de cero.
+function nuevoUsuario() {
+  const nuevo = `usuario_${nuevoId()}`;
+  try {
+    localStorage.setItem("promptcorn_user_id", nuevo);
+  } catch {
+    // sin localStorage: el id vale solo para esta sesión
+  }
+  return nuevo;
+}
 
 const INITIAL_MESSAGE = {
   id: 1,
@@ -40,7 +51,26 @@ function App() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [usuarioId, setUsuarioId] = useState(leerUsuario);
+  const [confirmando, setConfirmando] = useState(false);
+  const [reiniciando, setReiniciando] = useState(false);
+  const [errorReinicio, setErrorReinicio] = useState("");
   const messagesEndRef = useRef(null);
+  const cancelarRef = useRef(null);
+
+  // Modal: foco en "Cancelar" (la opción segura) y Escape para cerrar
+  useEffect(() => {
+    if (!confirmando) return;
+    cancelarRef.current?.focus();
+    function onKey(event) {
+      if (event.key === "Escape" && !reiniciando) {
+        setConfirmando(false);
+        setErrorReinicio("");
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [confirmando, reiniciando]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -83,7 +113,7 @@ function App() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            usuario_id: USER_ID,
+            usuario_id: usuarioId,
             mensaje: message,
           }),
         });
@@ -136,6 +166,47 @@ function App() {
     setError("");
   }
 
+  function cerrarModal() {
+    setConfirmando(false);
+    setErrorReinicio("");
+  }
+
+  // Borra vistas, notas, plataformas y recomendaciones del usuario demo,
+  // y empieza una conversación nueva (memoria del bot en blanco).
+  async function reiniciarPerfil() {
+    setReiniciando(true);
+    setErrorReinicio("");
+    try {
+      if (RESET_URL) {
+        const response = await fetch(RESET_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ confirmar: "BORRAR" }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || `Error HTTP ${response.status}`);
+        }
+      }
+      setUsuarioId(nuevoUsuario());
+      setMessages([
+        INITIAL_MESSAGE,
+        {
+          id: Date.now(),
+          role: "assistant",
+          content:
+            "Listo: borré tu historial, tus notas y tus plataformas. Empezamos de cero 🍿. Cuéntame qué plataformas tienes y qué películas te gustaron.",
+        },
+      ]);
+      setError("");
+      setConfirmando(false);
+    } catch (err) {
+      setErrorReinicio(err.message || "No se pudo reiniciar el perfil.");
+    } finally {
+      setReiniciando(false);
+    }
+  }
+
   return (
     <main className="app">
       <header className="topbar">
@@ -155,8 +226,68 @@ function App() {
           <button className="clear-button" onClick={clearChat}>
             Nueva conversación
           </button>
+          <button
+            className="clear-button reset-button"
+            onClick={() => setConfirmando(true)}
+            disabled={loading}
+          >
+            Reiniciar perfil
+          </button>
         </div>
       </header>
+
+      {confirmando && (
+        <div
+          className="modal-backdrop"
+          onClick={() => !reiniciando && cerrarModal()}
+        >
+          <div
+            className="modal"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="modal-titulo"
+            aria-describedby="modal-texto"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="modal-titulo">¿Borrar todo el historial?</h2>
+            <div id="modal-texto">
+              <p>Se borrará todo lo que PromptCorn sabe del usuario:</p>
+              <ul>
+                <li>Películas vistas y sus notas</li>
+                <li>Plataformas guardadas</li>
+                <li>Recomendaciones anteriores</li>
+                <li>La memoria de esta conversación</li>
+              </ul>
+              <p>
+                Las recomendaciones vuelven a empezar de cero.{" "}
+                <strong>Esta acción no se puede deshacer.</strong>
+              </p>
+            </div>
+            {errorReinicio && (
+              <p className="modal-error" role="alert">
+                {errorReinicio}
+              </p>
+            )}
+            <div className="modal-actions">
+              <button
+                ref={cancelarRef}
+                className="clear-button"
+                onClick={cerrarModal}
+                disabled={reiniciando}
+              >
+                Cancelar
+              </button>
+              <button
+                className="danger-button"
+                onClick={reiniciarPerfil}
+                disabled={reiniciando}
+              >
+                {reiniciando ? "Borrando…" : "Sí, borrar todo"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <section className="chat-layout">
         <div className="welcome-section">

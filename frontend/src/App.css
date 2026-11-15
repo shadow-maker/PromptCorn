@@ -74,6 +74,96 @@
   background: #292f40;
 }
 
+.clear-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.reset-button {
+  border-color: #6b3a44;
+  color: #f2b8c0;
+}
+
+.reset-button:hover:not(:disabled) {
+  background: #3a2229;
+}
+
+/* Modal de confirmación (acción destructiva) */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(8, 10, 16, 0.72);
+}
+
+.modal {
+  width: min(440px, 100%);
+  background: #1b1f2c;
+  border: 1px solid #41485b;
+  border-radius: 14px;
+  padding: 22px 24px 20px;
+  color: #e2e5ec;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.modal h2 {
+  margin: 0 0 12px;
+  font-size: 19px;
+  color: #ffffff;
+}
+
+.modal p,
+.modal li {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.modal p {
+  margin: 0 0 10px;
+}
+
+.modal ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.modal-error {
+  color: #ffb5b5;
+  background: #47262c;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.danger-button {
+  background: #c2414f;
+  border: 1px solid #c2414f;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 9px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.danger-button:hover:not(:disabled) {
+  background: #a83542;
+}
+
+.danger-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .chat-layout {
   width: min(850px, 90%);
   margin: 55px auto 30px;

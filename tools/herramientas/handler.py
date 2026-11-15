@@ -135,6 +135,30 @@ class AlmacenDynamo:
                                        ScanIndexForward=False, Limit=limite)  # SK empieza por la fecha
         return [de_dynamo(i) for i in r["Items"]]
 
+    def borrar_usuario(self, usuario: str) -> dict:
+        """Borra todo lo del usuario en las 3 tablas. Devuelve cuántos ítems se borraron en cada una."""
+        from boto3.dynamodb.conditions import Key
+        borrados = {}
+        for nombre, tabla, sk in (("vistas", self.vistas, "pelicula_id"),
+                                  ("recomendaciones", self.recomendaciones, "sk")):
+            claves, kwargs = [], {"KeyConditionExpression": Key("usuario_id").eq(usuario),
+                                  "ProjectionExpression": "usuario_id, #sk",
+                                  "ExpressionAttributeNames": {"#sk": sk}}
+            while True:
+                r = tabla.query(**kwargs)
+                claves += r["Items"]
+                if "LastEvaluatedKey" not in r:
+                    break
+                kwargs["ExclusiveStartKey"] = r["LastEvaluatedKey"]
+            with tabla.batch_writer() as w:
+                for clave in claves:
+                    w.delete_item(Key=clave)
+            borrados[nombre] = len(claves)
+        tenia_perfil = "Item" in self.perfil.get_item(Key={"usuario_id": usuario})
+        self.perfil.delete_item(Key={"usuario_id": usuario})
+        borrados["perfil"] = int(tenia_perfil)
+        return borrados
+
 
 # ---------- validación ----------
 
@@ -311,8 +335,17 @@ def obtener_historial(body: dict) -> dict:
     return salida
 
 
+def reiniciar_usuario(body: dict) -> dict:
+    """Borra vistas, notas, plataformas y recomendaciones del usuario (vuelve al arranque en frío).
+    No es una herramienta del chat (el LLM no la conoce): la usa el botón "Reiniciar perfil" del frontend.
+    Exige {"confirmar": "BORRAR"} para que no se ejecute por accidente."""
+    if body.get("confirmar") != "BORRAR":
+        raise error_entrada('Acción destructiva: envía {"confirmar": "BORRAR"} para confirmar.')
+    return {"ok": True, "borrados": almacen().borrar_usuario(_usuario(body))}
+
+
 HERRAMIENTAS = {f.__name__: f for f in (buscar_pelicula, ver_donde_ver, registrar_vista, guardar_plataformas,
-                                        obtener_historial)}
+                                        obtener_historial, reiniciar_usuario)}
 
 
 # ---------- entrada de la Lambda ----------
