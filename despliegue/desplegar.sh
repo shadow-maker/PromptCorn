@@ -27,8 +27,14 @@ salida_stack() {
     --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
 }
 
-# shellcheck disable=SC1090
-[ -f "$HOME/.promptcorn.env" ] && source "$HOME/.promptcorn.env"
+# Secretos persistentes de la EC2 (fuera del repo). set -a exporta todo lo que define el archivo,
+# aunque alguna línea no tenga "export" (serverless lee las variables como proceso hijo).
+if [ -f "$HOME/.promptcorn.env" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$HOME/.promptcorn.env"
+  set +a
+fi
 
 asegurar_uv() {
   export PATH="$HOME/.local/bin:$PATH"
