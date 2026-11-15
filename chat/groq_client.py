@@ -47,8 +47,11 @@ if not API_KEY:
 
 client = Groq(
     api_key=API_KEY,
-    timeout=30.0,
-    max_retries=2
+    # La Lambda tiene 29 s (API Gateway corta a los 30): cada llamada a Groq
+    # debe fallar rápido en vez de esperar reintentos largos por el límite
+    # de tokens por minuto. lambda_function controla el presupuesto total.
+    timeout=float(os.getenv("GROQ_TIMEOUT", "12")),
+    max_retries=int(os.getenv("GROQ_MAX_RETRIES", "1"))
 )
 
 

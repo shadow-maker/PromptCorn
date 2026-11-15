@@ -86,6 +86,20 @@ class TestLimites(unittest.TestCase):
         r = lambda_handler(evento("hola"), None)
         self.assertNotIn("traza", json.loads(r["body"]))
 
+    @patch("lambda_function.ejecutar_herramienta", return_value={"ok": True})
+    @patch("lambda_function.guardar_mensaje")
+    @patch("lambda_function.obtener_conversacion", return_value=[])
+    @patch("lambda_function.consultar_groq")
+    @patch("lambda_function.time")
+    def test_presupuesto_de_tiempo(self, mock_time, mock_groq, *_):
+        mock_time.time.side_effect = [0, 0, 20, 20, 20, 20]  # handler, inicio del turno, 2a vuelta: 20 s
+        llamada = SimpleNamespace(id="c1", function=SimpleNamespace(name="registrar_vista", arguments='{"id": 1}'))
+        mock_groq.side_effect = [FakeMensaje(tool_calls=[llamada]), FakeMensaje(content="nunca llega")]
+        r = lambda_handler(evento("le doy un 4"), None)
+        self.assertEqual(r["statusCode"], 200)
+        self.assertIn("tardando", json.loads(r["body"])["respuesta"])
+        self.assertEqual(mock_groq.call_count, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

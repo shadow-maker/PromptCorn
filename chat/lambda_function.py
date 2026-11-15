@@ -100,6 +100,11 @@ TOOLS = [
 ]
 
 
+# Segundos de la Lambda (máx. 29) a partir de los cuales no se hace otra
+# llamada a Groq en el mismo turno.
+PRESUPUESTO_SEGUNDOS = 16
+
+
 # ============================================================
 # RESULTADOS COMPACTOS PARA EL LLM
 # ============================================================
@@ -165,8 +170,22 @@ def procesar_mensaje(usuario_id, mensaje, traza=None):
 
     # Máximo de iteraciones para evitar ciclos infinitos.
     max_intentos = 5
+    inicio = time.time()
 
     for intento in range(max_intentos):
+
+        # Presupuesto de tiempo: si ya se usó buena parte de los 29 s de la
+        # Lambda, se responde con lo que hay en vez de dejar que API Gateway
+        # corte la conexión (503). Lo que las herramientas ya guardaron queda.
+        if intento > 0 and time.time() - inicio > PRESUPUESTO_SEGUNDOS:
+            traza.append({"paso": "presupuesto_agotado", "segundos": round(time.time() - inicio, 1)})
+            mensaje_lento = (
+                "Estoy tardando más de lo normal en responder. "
+                "Lo que me pediste guardar ya quedó registrado; "
+                "vuelve a enviarme tu pregunta en unos segundos, por favor."
+            )
+            guardar_mensaje(usuario_id, "assistant", mensaje_lento)
+            return mensaje_lento
 
         respuesta = consultar_groq(
             messages,
