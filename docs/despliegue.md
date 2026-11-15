@@ -1,6 +1,6 @@
 # Despliegue manual en AWS Academy (Learner Lab)
 
-Todo se hace desde la consola, en **us-east-1**, con el rol **`LabRole`** (Learner Lab no deja crear roles). Los agentes de IA no tocan AWS: esta guía es para el equipo.
+Todo se hace desde la consola, en **us-east-1**, con el rol **`LabRole`** (Learner Lab no deja crear roles). Runtime de todas las Lambdas: **Python 3.14**. La consola ofrece 3.15, pero los binarios incluidos (numpy, pydantic-core) son para 3.14 y no cargan en otra versión. Los agentes de IA no tocan AWS: esta guía es para el equipo.
 
 ## `recomendar` (API del modelo de ML)
 

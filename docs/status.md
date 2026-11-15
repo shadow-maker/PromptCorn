@@ -30,7 +30,7 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - [ ] (A+B) Accesos a la cuenta AWS y convención de prefijos.
 - [x] (A) Región AWS: us-east-1 (falta redactar el sustento para el informe).
 - [x] (A+B) Despliegue manual desde la consola de AWS Academy (Learner Lab, `LabRole`); Lambdas en Python.
-- [ ] (A+B) Versión de Python: confirmar en la consola si existe el runtime 3.14 (si no, 3.13).
+- [x] (A+B) Versión de Python: **3.14** en todas las Lambdas. Learner Lab ofrece hasta 3.15; se usa 3.14 porque los zips y la layer están armados para esa versión.
 
 ## Etapa 1: Modelo de ML (A)
 - [x] Scripts de descarga y consolidación (`scripts/`).
@@ -81,7 +81,6 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - [ ] Ensayo y exposición (miércoles 18, 19h).
 
 ## Decisiones abiertas
-- Versión de Python de las Lambdas (3.13 o 3.14): se confirma en la consola. Hay zips para ambas.
 
 ## Decisiones tomadas
 - Artefactos del modelo (vectores + catálogo del modelo) en **S3**; la Lambda los carga al arrancar.

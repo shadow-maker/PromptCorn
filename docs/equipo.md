@@ -49,4 +49,4 @@ El estado real lo indica la Persona A cuando haga falta; ver [status.md](status.
 - ~~ID de película~~ **Decidido:** contratos y tablas usan solo el `id` propio del catálogo; nunca IDs de las fuentes. Películas fuera del catálogo (p. ej. posteriores a 2018): propuesta, **no se agregan**; `buscar_pelicula` las identifica en vivo pero las marca `en_catalogo: false` y el bot lo explica de forma amable (coincide con HU8, "título no encontrado"). A confirmar con B.
 - ~~Región~~ **Decidido:** us-east-1.
 - ~~Despliegue~~ **Decidido:** cuenta AWS Academy (Learner Lab). El equipo despliega **a mano** desde la consola usando el código del repo; los agentes de IA no tocan AWS. Roles: `LabRole`.
-- Contratos JSON definitivos y versión de Python de las Lambdas (3.13 o 3.14, según lo que ofrezca la consola): por definir.
+- ~~Contratos y versión de Python~~ **Decidido:** contratos en [contratos.md](contratos.md); todas las Lambdas en **Python 3.14**. La consola ofrece hasta 3.15, pero los binarios (numpy, pydantic-core) están armados para 3.14.
