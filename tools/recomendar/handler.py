@@ -184,7 +184,7 @@ def recomendar(body: dict, almacen, ahora: datetime | None = None) -> dict:
     recientes = almacen.recomendadas_desde(usuario, desde)
 
     avisos = []
-    if "plataformas" in body:  # el usuario pidió otras plataformas solo para esta consulta ([] = cualquiera)
+    if body.get("plataformas") is not None:  # otras plataformas solo para esta consulta ([] = cualquiera; null = las del perfil)
         plataformas = _lista_de_textos(body, "plataformas", rec.plataformas_validas) or []
     else:
         plataformas = [p for p in almacen.plataformas_de(usuario) if p in rec.plataformas_validas]

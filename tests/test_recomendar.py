@@ -152,6 +152,12 @@ class TestHandler(unittest.TestCase):
             handler.recomendar({"cantidad": 50}, al, self.AHORA)
         self.assertEqual(handler.recomendar({"cantidad": "2", "guardar": False}, al, self.AHORA)["filtros_aplicados"]["plataformas"], ["Netflix"])
 
+    def test_plataformas_null_usa_las_del_perfil(self):
+        al = AlmacenMemoria(plataformas=["Disney+"])
+        r = handler.recomendar({"plataformas": None, "anio_min": None, "guardar": False}, al, self.AHORA)
+        self.assertEqual(r["filtros_aplicados"]["plataformas"], ["Disney+"])
+        self.assertEqual([x["id"] for x in r["recomendaciones"]], [6])
+
     def test_parecido_fuera_del_modelo_avisa(self):
         r = handler.recomendar({"parecido_a": 999, "guardar": False}, AlmacenMemoria(), self.AHORA)
         self.assertEqual(r["modo"], "arranque_en_frio")

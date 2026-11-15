@@ -131,6 +131,25 @@ class TestLimites(unittest.TestCase):
             r = lambda_handler(con_depurar, contexto)
             self.assertNotIn("detalle", json.loads(r["body"]))
 
+    def test_parametros_opcionales_admiten_null(self):
+        buscar = next(h for h in lambda_function.TOOLS if h["function"]["name"] == "buscar_pelicula")
+        props = buscar["function"]["parameters"]["properties"]
+        self.assertEqual(props["anio"]["type"], ["integer", "null"])
+        self.assertEqual(props["titulo"]["type"], "string")  # obligatorio: sin null
+        registrar = next(h for h in lambda_function.TOOLS if h["function"]["name"] == "registrar_vista")
+        self.assertIn(None, registrar["function"]["parameters"]["properties"]["estado"]["enum"])
+
+    @patch("lambda_function.ejecutar_herramienta", return_value={"resultados": []})
+    @patch("lambda_function.guardar_mensaje")
+    @patch("lambda_function.obtener_conversacion", return_value=[])
+    @patch("lambda_function.consultar_groq")
+    def test_quita_nulls_antes_de_llamar(self, mock_groq, _o, _g, mock_herramienta):
+        llamada = SimpleNamespace(id="c1", function=SimpleNamespace(
+            name="buscar_pelicula", arguments='{"titulo": "Iron Man", "anio": null}'))
+        mock_groq.side_effect = [FakeMensaje(tool_calls=[llamada]), FakeMensaje(content="ok")]
+        lambda_handler(evento("vi iron man"), None)
+        mock_herramienta.assert_called_once_with("buscar_pelicula", {"titulo": "Iron Man"})
+
 
 if __name__ == "__main__":
     unittest.main()

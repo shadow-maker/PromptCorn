@@ -24,7 +24,24 @@ GENEROS = [
 ID = {"type": "integer", "description": "id devuelto por otra herramienta."}
 
 
+def _admite_null(esquema):
+    """
+    Los parámetros opcionales aceptan null: el modelo a veces manda
+    "anio": null en vez de omitirlo, y Groq rechaza la llamada entera
+    (tool_use_failed) si el schema no lo permite.
+    """
+    esquema = dict(esquema)
+    esquema["type"] = [esquema["type"], "null"]
+    if "enum" in esquema:
+        esquema["enum"] = [*esquema["enum"], None]
+    return esquema
+
+
 def _herramienta(nombre, descripcion, propiedades, requeridos=()):
+    propiedades = {
+        clave: esquema if clave in requeridos else _admite_null(esquema)
+        for clave, esquema in propiedades.items()
+    }
     return {
         "type": "function",
         "function": {
@@ -263,6 +280,13 @@ def procesar_mensaje(usuario_id, mensaje, traza=None):
                     raise ValueError(
                         "Los argumentos deben ser un objeto JSON."
                     )
+
+                # null = "no aplica": se omite (así las APIs usan su valor por defecto).
+                argumentos = {
+                    clave: valor
+                    for clave, valor in argumentos.items()
+                    if valor is not None
+                }
 
                 # Las herramientas son de un solo usuario (el fijo de la
                 # app): no se les manda el usuario_id del chat.
