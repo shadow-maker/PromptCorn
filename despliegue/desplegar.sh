@@ -89,8 +89,11 @@ frontend() {
   [ -n "$api" ] && [ "$api" != "None" ] || falla "no encontré el stack $STACK: despliega primero el backend"
   echo "  API del chat: $api/chat"
   (cd "$RAIZ/frontend" && npm ci --silent && VITE_API_URL="$api/chat" npm run build --silent)
+  # Documentación interactiva (Swagger UI en /docs/) con la URL real de la API
+  sed "s|__API_URL__|$api|" "$RAIZ/docs/openapi.yaml" > "$RAIZ/frontend/dist/docs/openapi.yaml"
   aws s3 sync "$RAIZ/frontend/dist/" "s3://$bucket/" --delete --only-show-errors --region "$REGION"
   echo "  Sitio: $sitio"
+  echo "  Documentación de la API: $sitio/docs/"
 }
 
 datos() {

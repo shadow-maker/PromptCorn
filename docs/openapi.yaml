@@ -1,0 +1,391 @@
+openapi: 3.0.3
+info:
+  title: PromptCorn API
+  version: "1.0"
+  description: |
+    API del chatbot de recomendación de películas PromptCorn (Proyecto Final de Cloud Computing, Maestría CDIA, UTEC).
+
+    - **Chat:** orquestador con Groq (tool calling) y memoria conversacional en DynamoDB.
+    - **Modelo de ML:** `recomendar`, filtrado colaborativo item-item con SVD.
+    - **Herramientas:** búsqueda, disponibilidad en Perú, registro de vistas, plataformas e historial.
+
+    Todas las rutas son `POST` con JSON. No hay autenticación: es un prototipo de un solo usuario. Las herramientas
+    siempre usan el usuario fijo de la app; `/chat` separa conversaciones por `usuario_id`.
+
+    Las películas se identifican con el `id` propio del catálogo (entero).
+
+    Datos: TMDB (este producto usa la API de TMDB pero no está respaldado ni certificado por TMDB), JustWatch
+    y MovieLens (Harper y Konstan, 2015).
+servers:
+  - url: __API_URL__     # desplegar.sh lo reemplaza por la URL real de la API al publicar /docs
+    description: API Gateway (us-east-1)
+tags:
+  - name: Chat
+    description: Conversación con el bot (llama a las demás APIs según lo que pida el usuario)
+  - name: Modelo de ML
+    description: Recomendaciones personalizadas
+  - name: Herramientas
+    description: Datos del catálogo y del usuario
+
+paths:
+  /chat:
+    post:
+      tags: [Chat]
+      summary: Enviar un mensaje al bot
+      description: |
+        Carga los últimos 12 mensajes de la conversación, consulta a Groq con las herramientas disponibles,
+        ejecuta las que el modelo pida y guarda el turno. Puede tardar varios segundos (máx. 29 s).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [usuario_id, mensaje]
+              properties:
+                usuario_id: { type: string, description: Identifica la conversación (el frontend usa un id por navegador) }
+                mensaje: { type: string }
+            examples:
+              comedia: { summary: Recomendación con filtros, value: { usuario_id: prueba-swagger, mensaje: Recomiéndame una comedia corta } }
+              donde_ver: { summary: Disponibilidad, value: { usuario_id: prueba-swagger, mensaje: ¿Dónde puedo ver Matrix? } }
+              registrar: { summary: Registrar con nota, value: { usuario_id: prueba-swagger, mensaje: "Vi Interstellar y me encantó, le pongo 5" } }
+      responses:
+        "200":
+          description: Respuesta del bot (Markdown simple)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  usuario_id: { type: string }
+                  respuesta: { type: string }
+                  reintentar: { type: boolean, description: "true si se alcanzó el límite de uso de Groq: reenviar en unos segundos" }
+              example:
+                usuario_id: prueba-swagger
+                respuesta: "¡Claro! **Matrix** (1999) está disponible hoy en Perú en:\n\n- **HBO Max**\n- **Claro Video**"
+        "400": { $ref: "#/components/responses/Error400" }
+        "500": { $ref: "#/components/responses/Error500" }
+
+  /recomendar:
+    post:
+      tags: [Modelo de ML]
+      summary: Recomendar películas
+      description: |
+        Lee por su cuenta las notas (`Vistas`), las plataformas (`Perfil`) y lo recomendado en las últimas 24 h
+        (`Recomendaciones`). Excluye lo visto, lo descartado, lo ya recomendado y lo que no está en ninguna plataforma
+        de Perú. Guarda lo entregado en `Recomendaciones` (salvo `guardar: false`).
+
+        - `modo: perfil`: según las notas del usuario. Puntaje = 0.5 · afinidad + 0.5 · popularidad.
+        - `modo: parecido`: películas parecidas a `parecido_a`.
+        - `modo: arranque_en_frio`: el usuario aún no calificó nada; populares dentro de los filtros.
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RecomendarRequest" }
+            examples:
+              basico: { summary: Básico (sin guardar), value: { cantidad: 3, guardar: false } }
+              filtros: { summary: Comedias cortas desde 1995, value: { cantidad: 3, generos: [Comedia, Animación], duracion_max: 110, anio_min: 1995, guardar: false } }
+              parecido: { summary: Parecidas a Toy Story (id 1) en Disney+, value: { cantidad: 3, parecido_a: 1, plataformas: [Disney+], guardar: false } }
+              error: { summary: Género inválido (400), value: { generos: [Anime] } }
+      responses:
+        "200":
+          description: Recomendaciones ordenadas
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecomendarResponse" }
+        "400": { $ref: "#/components/responses/Error400" }
+        "500": { $ref: "#/components/responses/Error500" }
+
+  /buscar_pelicula:
+    post:
+      tags: [Herramientas]
+      summary: Buscar una película por título
+      description: |
+        Búsqueda en vivo (tolera títulos en español o inglés y errores de tipeo) traducida a nuestro `id`.
+        `en_catalogo: false` (con `id: null`) = la película existe pero no está en el catálogo (llega hasta 2018).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [titulo]
+              properties:
+                titulo: { type: string }
+                anio: { type: integer, description: "Opcional, para desambiguar" }
+            examples:
+              ingles: { summary: Título en inglés, value: { titulo: Interstellar } }
+              tipeo: { summary: Con error de tipeo, value: { titulo: toy stori } }
+              fuera: { summary: Fuera del catálogo, value: { titulo: Oppenheimer } }
+      responses:
+        "200":
+          description: Hasta 5 resultados, del más al menos relevante
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resultados:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer, nullable: true }
+                        titulo: { type: string }
+                        anio: { type: integer, nullable: true }
+                        sinopsis: { type: string, nullable: true }
+                        poster: { type: string, nullable: true, description: "Ruta relativa: https://image.tmdb.org/t/p/w500 + poster" }
+                        en_catalogo: { type: boolean }
+                  avisos: { $ref: "#/components/schemas/Avisos" }
+              example:
+                resultados:
+                  - { id: 8318, titulo: Interestelar, anio: 2014, sinopsis: "Cooper y un grupo de exploradores…", poster: /oBvINgU5r10WHvG6VSopCOlWtJP.jpg, en_catalogo: true }
+                  - { id: null, titulo: "Inside 'Interstellar'", anio: 2015, sinopsis: null, poster: null, en_catalogo: false }
+                avisos: []
+        "400": { $ref: "#/components/responses/Error400" }
+
+  /ver_donde_ver:
+    post:
+      tags: [Herramientas]
+      summary: Dónde ver una película hoy (Perú)
+      description: Solo suscripción o gratis. Si la consulta en vivo falla, devuelve el snapshot del catálogo y lo indica en `avisos`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id: { type: integer }
+            example: { id: 8318 }
+      responses:
+        "200":
+          description: Plataformas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: integer }
+                  titulo: { type: string }
+                  plataformas: { type: array, items: { type: string } }
+                  fecha: { type: string, format: date }
+                  avisos: { $ref: "#/components/schemas/Avisos" }
+              example: { id: 8318, titulo: Interestelar, plataformas: [Prime Video, HBO Max, Claro Video], fecha: "2026-11-15", avisos: [] }
+        "400": { $ref: "#/components/responses/Error400" }
+        "404": { $ref: "#/components/responses/Error404" }
+
+  /registrar_vista:
+    post:
+      tags: [Herramientas]
+      summary: Registrar una película vista o descartada
+      description: |
+        Escribe en `Vistas`. La nota es lo que aprende el modelo (se redondea a medios puntos).
+        Si la película ya estaba registrada, se reemplaza (sirve para corregir una nota).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id: { type: integer }
+                estado: { type: string, enum: [visto, no_me_interesa], default: visto }
+                calificacion: { type: number, minimum: 0.5, maximum: 5 }
+            examples:
+              visto: { summary: Vista con nota 5, value: { id: 8318, calificacion: 5 } }
+              descartar: { summary: No me interesa, value: { id: 1, estado: no_me_interesa } }
+      responses:
+        "200":
+          description: Registrada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  id: { type: integer }
+                  titulo: { type: string }
+                  estado: { type: string }
+                  calificacion: { type: number, nullable: true }
+              example: { ok: true, id: 8318, titulo: Interestelar, estado: visto, calificacion: 5 }
+        "400": { $ref: "#/components/responses/Error400" }
+        "404": { $ref: "#/components/responses/Error404" }
+
+  /guardar_plataformas:
+    post:
+      tags: [Herramientas]
+      summary: Guardar las plataformas del usuario
+      description: Normaliza variantes ("netflix", "Amazon Prime", "HBO", "Disney Plus") al nombre canónico. Escribe en `Perfil`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plataformas]
+              properties:
+                plataformas: { type: array, items: { type: string } }
+                accion: { type: string, enum: [reemplazar, agregar, quitar], default: reemplazar }
+            examples:
+              reemplazar: { summary: Reemplazar, value: { plataformas: [netflix, amazon prime, hbo] } }
+              agregar: { summary: Agregar, value: { plataformas: [Disney Plus], accion: agregar } }
+      responses:
+        "200":
+          description: Lista final del usuario
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  plataformas: { type: array, items: { type: string } }
+                  no_reconocidas: { type: array, items: { type: string } }
+              example: { ok: true, plataformas: [Netflix, Prime Video, HBO Max], no_reconocidas: [] }
+        "400": { $ref: "#/components/responses/Error400" }
+
+  /obtener_historial:
+    post:
+      tags: [Herramientas]
+      summary: Historial de recomendaciones y vistas
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tipo: { type: string, enum: [todo, recomendaciones, vistas], default: todo }
+                limite: { type: integer, minimum: 1, maximum: 50, default: 10 }
+            example: { tipo: todo, limite: 10 }
+      responses:
+        "200":
+          description: Lo más reciente primero
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recomendaciones:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        fecha: { type: string, format: date-time }
+                        id: { type: integer }
+                        titulo: { type: string }
+                        anio: { type: integer }
+                        plataformas: { type: array, items: { type: string } }
+                        motivo: { $ref: "#/components/schemas/Motivo" }
+                  vistas:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        fecha: { type: string, format: date-time }
+                        id: { type: integer }
+                        titulo: { type: string }
+                        estado: { type: string }
+                        calificacion: { type: number, nullable: true }
+        "400": { $ref: "#/components/responses/Error400" }
+
+components:
+  schemas:
+    Avisos:
+      type: array
+      items: { type: string }
+      description: Mensajes para que el bot se los explique al usuario
+    Motivo:
+      type: object
+      nullable: true
+      description: La película calificada por el usuario que más pesó en la recomendación
+      properties:
+        id: { type: integer }
+        titulo: { type: string }
+        calificacion: { type: number, nullable: true }
+    RecomendarRequest:
+      type: object
+      properties:
+        cantidad: { type: integer, minimum: 1, maximum: 10, default: 3 }
+        generos:
+          type: array
+          items:
+            type: string
+            enum: [Acción, Animación, Aventura, Bélica, Ciencia ficción, Comedia, Crimen, Documental, Drama, Familia,
+                   Fantasía, Historia, Misterio, Música, Película de TV, Romance, Suspenso, Terror, Western]
+        duracion_max: { type: integer, description: Minutos }
+        anio_min: { type: integer }
+        anio_max: { type: integer }
+        plataformas:
+          type: array
+          items: { type: string }
+          description: Reemplaza las del perfil solo en esta consulta; [] = cualquier plataforma de Perú
+        parecido_a: { type: integer, description: id de una película (modo "parecidas a X") }
+        excluir: { type: array, items: { type: integer } }
+        guardar: { type: boolean, default: true, description: false para probar sin escribir en Recomendaciones }
+    RecomendarResponse:
+      type: object
+      properties:
+        modo: { type: string, enum: [perfil, parecido, arranque_en_frio] }
+        recomendaciones:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              titulo: { type: string }
+              anio: { type: integer }
+              plataformas: { type: array, items: { type: string } }
+              generos: { type: array, items: { type: string } }
+              duracion_min: { type: integer }
+              sinopsis: { type: string }
+              poster: { type: string }
+              afinidad: { type: number, nullable: true, description: Coseno entre -1 y 1 (null en arranque en frío) }
+              motivo: { $ref: "#/components/schemas/Motivo" }
+        avisos: { $ref: "#/components/schemas/Avisos" }
+        filtros_aplicados: { type: object }
+        modelo:
+          type: object
+          properties:
+            fecha: { type: string, format: date }
+            k: { type: integer }
+      example:
+        modo: perfil
+        recomendaciones:
+          - id: 8619
+            titulo: "Mad Max: Furia en el camino"
+            anio: 2015
+            plataformas: [Prime Video, Apple TV+, HBO Max]
+            generos: [Acción, Aventura, Ciencia ficción]
+            duracion_min: 120
+            sinopsis: "Perseguido por su turbulento pasado, Mad Max…"
+            poster: /ixSuKuBnSfHmyzZbcWCywOKZ6Ho.jpg
+            afinidad: 0.375
+            motivo: { id: 8318, titulo: Interestelar, calificacion: 5 }
+        avisos: []
+        filtros_aplicados: { duracion_max: 130, plataformas: [Netflix, Prime Video] }
+        modelo: { fecha: "2026-11-13", k: 64 }
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+      additionalProperties: true
+  responses:
+    Error400:
+      description: Request inválido (puede traer la lista de valores válidos, p. ej. `generos_validos`)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { error: "Valores no reconocidos en 'generos': ['Anime'].", generos_validos: [Acción, Animación, "…"] }
+    Error404:
+      description: No existe una película con ese id
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { error: "No existe una película con id 424242. Búscala con buscar_pelicula." }
+    Error500:
+      description: Error interno (el detalle queda en CloudWatch)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }

@@ -83,9 +83,9 @@ El script hace todo esto:
 1. `git pull`.
 2. Empaqueta las 3 Lambdas con sus dependencias para Linux (y la layer de numpy la primera vez).
 3. `serverless deploy`, que crea o actualiza el stack. La primera vez tarda unos 3–5 minutos.
-4. Compila el frontend con la URL de la API, que toma sola del stack, y lo sube a `utec-promptcorn-chat-web`.
+4. Compila el frontend con la URL de la API, que toma sola del stack, y lo sube a `utec-promptcorn-chat-web`, junto con la documentación interactiva de la API en `/docs/`.
 
-Al final muestra los endpoints de la API y la URL del sitio.
+Al final muestra los endpoints de la API, la URL del sitio y la de la documentación (`<sitio>/docs/`, Swagger UI con **Try it out** contra la API real).
 
 **Después de cada cambio en el repo:** `despliegue/desplegar.sh`. Solo se actualiza lo que cambió.
 

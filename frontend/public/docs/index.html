@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PromptCorn API</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui.css" />
+    <style>
+      body { margin: 0; background: #fafafa; }
+      .swagger-ui .topbar { display: none; }
+      .volver { font: 14px system-ui, sans-serif; padding: 12px 20px; background: #12141c; color: #f0f1f5; }
+      .volver a { color: #b9a2f0; }
+    </style>
+  </head>
+  <body>
+    <div class="volver">🍿 <strong>PromptCorn API</strong> · documentación interactiva · <a href="../">volver al chat</a></div>
+    <div id="swagger-ui"></div>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-bundle.js"></script>
+    <script>
+      // openapi.yaml lo publica despliegue/desplegar.sh con la URL real de la API
+      window.ui = SwaggerUIBundle({
+        url: "./openapi.yaml",
+        dom_id: "#swagger-ui",
+        tryItOutEnabled: true,
+        docExpansion: "list",
+        defaultModelsExpandDepth: -1,
+        displayRequestDuration: true,
+      });
+    </script>
+  </body>
+</html>

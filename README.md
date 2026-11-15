@@ -27,6 +27,7 @@ docs/
   datos.md        Fuentes de datos y consolidación del catálogo
   modelo.md       Modelo de ML: diseño, evaluación, artefactos
   contratos.md    Contratos JSON de las herramientas y tablas DynamoDB
+  openapi.yaml    Especificación OpenAPI (Swagger UI en <sitio>/docs/, importable en Postman)
   despliegue.md   Guía de despliegue manual en AWS (Learner Lab)
   equipo.md       División del trabajo
   status.md       Avance y TODOs

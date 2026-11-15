@@ -1,5 +1,7 @@
 # Contratos de las APIs y tablas
 
+Especificación OpenAPI: [`openapi.yaml`](openapi.yaml). Publicada como Swagger UI en `<sitio>/docs/` e importable en Postman (**Import → archivo**).
+
 Punto de contacto entre el chat (B) y el backend (A). Las películas se identifican **solo con el `id` propio** del catálogo (entero).
 
 Todo cuelga de una sola HTTP API (definida en `serverless.yml`): `POST /chat`, `POST /recomendar` y `POST /<herramienta>` para las otras 5. El chat recibe la URL base en `API_TOOLS_URL` (la pone el despliegue). Todas usan al usuario fijo de la app: el chat no manda el usuario.

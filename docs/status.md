@@ -49,7 +49,8 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - [x] Catálogo completo para S3 (`scripts/exportar_catalogo.py`, 6.1 MB) en lugar de una tabla `Peliculas`.
 - [ ] (A+B) Desplegar (incluido en la guía de [despliegue.md](despliegue.md)).
 - [ ] Probar el flujo completo con el chat real: `MOCK_MODE=false` y `API_TOOLS_URL`.
-- [ ] Colección de Postman con evidencia de cada herramienta.
+- [x] Especificación OpenAPI (`docs/openapi.yaml`) y documentación interactiva (Swagger UI en `<sitio>/docs/`).
+- [ ] Colección de Postman con evidencia de cada herramienta (importar `openapi.yaml` publicado en `<sitio>/docs/openapi.yaml`).
 
 ## Etapa 3: Lambda del chat (B)
 - [x] Prompt del sistema, tool calling con Groq (hasta 5 vueltas), memoria en `Conversaciones`, errores de herramientas devueltos al LLM.
