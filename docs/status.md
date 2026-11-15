@@ -39,8 +39,8 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - [x] Núcleo del recomendador (`tools/recomendar/recomendador.py`): filtros, perfil, "parecida a X", arranque en frío, motivo.
 - [x] Lambda `/recomendar`: `handler.py` (artefactos de S3; lee `Vistas`, `Perfil` y `Recomendaciones`; guarda lo entregado), pruebas, `empaquetar.sh` (zip + layer de numpy) y eventos de prueba.
 - [x] Contrato de `recomendar` y esquema de las tablas ([contratos.md](contratos.md)).
-- [x] Script de despliegue `despliegue/actualizar.sh` (git pull + empaquetado + AWS CLI desde CloudShell o EC2).
-- [ ] (A+B) Desplegar en Learner Lab siguiendo [despliegue.md](despliegue.md): recursos en la consola (parte 1), datos a S3 (parte 3) y `actualizar.sh todo` (parte 4).
+- [x] Infraestructura como código: `serverless.yml` (Serverless Framework v4.46) + `despliegue/desplegar.sh`.
+- [ ] (A+B) Desplegar en Learner Lab siguiendo [despliegue.md](despliegue.md): org en `serverless.yml`, datos a S3, EC2 de despliegue y `desplegar.sh`.
 - [ ] Pasarle a B la URL de `/recomendar` y el contrato.
 
 ## Etapa 2: Tablas y herramientas (A)
@@ -93,5 +93,5 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - Las 5 herramientas de datos van en una sola Lambda (`POST /{herramienta}`) y `recomendar` va aparte, porque usa numpy y el modelo.
 - El catálogo completo va en S3 como JSON en memoria; no hay tabla `Peliculas`. Las bases de datos del enunciado son las 4 tablas DynamoDB.
 - Un solo bucket `utec-promptcorn-tools-datos`, con los prefijos `modelo/` y `catalogo/`.
-- Despliegue: recursos creados una vez en la consola; el código se actualiza con `despliegue/actualizar.sh` desde CloudShell (o una EC2 solo de despliegue, fuera de la arquitectura).
-- Secretos en las variables de entorno de las Lambdas: Learner Lab no da acceso a SSM. Para el informe: en producción irían en SSM o Secrets Manager. Se descartó EC2 porque rompe el requisito serverless.
+- Despliegue con Serverless Framework v4.46 (como en clase), desde una EC2 de despliegue con `LabInstanceProfile`: `serverless.yml` define Lambdas, layer, una sola HTTP API, tablas y bucket web; `despliegue/desplegar.sh` hace git pull, empaqueta, despliega y publica el frontend. La EC2 no forma parte de la arquitectura de la app.
+- Secretos en `~/.promptcorn.env` de la EC2, que el despliegue pasa a las variables de entorno de las Lambdas: Learner Lab no da acceso a SSM. Para el informe: en producción irían en SSM o Secrets Manager. Se descartó EC2 porque rompe el requisito serverless.

@@ -37,7 +37,8 @@ tools/herramientas/ Lambda de las otras 5 herramientas (buscar, dónde ver, regi
 chat/             Lambda del chat con Groq (Persona B)
 frontend/         chat web (Persona B)
 tests/            pruebas (python -m unittest discover -s tests)
-despliegue/       actualizar.sh (git pull + deploy a AWS) y config.sh
+serverless.yml    infraestructura como código (Serverless Framework v4)
+despliegue/       desplegar.sh (git pull + empaquetado + serverless deploy + frontend)
 data/, dist/      (no versionados) datos y paquetes para AWS
 ```
 

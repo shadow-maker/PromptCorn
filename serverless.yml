@@ -1,0 +1,199 @@
+# Infraestructura de PromptCorn como código (Serverless Framework v4.46).
+# Se despliega con despliegue/desplegar.sh desde la EC2 de despliegue (ver docs/despliegue.md).
+# Aquí no hay secretos: TMDB_TOKEN y GROQ_API_KEY se leen del entorno de quien despliega.
+
+org: REEMPLAZAR_CON_TU_ORG   # tu org de serverless.com (se ve en app.serverless.com); no es secreto
+app: promptcorn
+service: promptcorn
+frameworkVersion: "4"
+
+params:
+  default:
+    bucketDatos: utec-promptcorn-tools-datos      # ya existe; modelo/ y catalogo/ se suben aparte (licencia de datos)
+    bucketWeb: utec-promptcorn-chat-web           # lo crea este archivo
+    usuario: usuario-demo
+    tablaVistas: promptcorn-tools-vistas
+    tablaPerfil: promptcorn-tools-perfil
+    tablaRecomendaciones: promptcorn-tools-recomendaciones
+    tablaConversaciones: promptcorn-chat-conversaciones
+    groqModel: openai/gpt-oss-20b
+
+provider:
+  name: aws
+  runtime: python3.14          # la layer de numpy y el zip del chat traen binarios para esta versión
+  architecture: x86_64
+  region: us-east-1
+  stage: prod
+  iam:
+    role: arn:aws:iam::${aws:accountId}:role/LabRole   # Learner Lab no deja crear roles
+  httpApi:
+    cors: true
+  logRetentionInDays: 7
+
+# El código se empaqueta antes (despliegue/desplegar.sh) con las dependencias para Linux;
+# Serverless solo sube los zips.
+package:
+  individually: true
+
+layers:
+  numpy:
+    name: promptcorn-tools-numpy
+    description: numpy para Python 3.14 (x86_64)
+    package:
+      artifact: dist/aws/capa-numpy.zip
+    compatibleRuntimes:
+      - python3.14
+    compatibleArchitectures:
+      - x86_64
+
+functions:
+  recomendar:
+    name: promptcorn-tools-recomendar
+    description: API del modelo de ML (SVD item-item)
+    handler: handler.lambda_handler
+    package:
+      artifact: dist/aws/recomendar.zip
+    layers:
+      - Ref: NumpyLambdaLayer
+    memorySize: 512
+    timeout: 15
+    environment:
+      BUCKET_ARTEFACTOS: ${param:bucketDatos}
+      PREFIJO_ARTEFACTOS: modelo/
+      TABLA_VISTAS: ${param:tablaVistas}
+      TABLA_PERFIL: ${param:tablaPerfil}
+      TABLA_RECOMENDACIONES: ${param:tablaRecomendaciones}
+      USUARIO_ID: ${param:usuario}
+    events:
+      - httpApi:
+          method: POST
+          path: /recomendar
+
+  herramientas:
+    name: promptcorn-tools-herramientas
+    description: buscar_pelicula, ver_donde_ver, registrar_vista, guardar_plataformas, obtener_historial
+    handler: handler.lambda_handler
+    package:
+      artifact: dist/aws/herramientas.zip
+    memorySize: 256
+    timeout: 15
+    environment:
+      BUCKET_CATALOGO: ${param:bucketDatos}
+      PREFIJO_CATALOGO: catalogo/
+      TMDB_TOKEN: ${env:TMDB_TOKEN}
+      TABLA_VISTAS: ${param:tablaVistas}
+      TABLA_PERFIL: ${param:tablaPerfil}
+      TABLA_RECOMENDACIONES: ${param:tablaRecomendaciones}
+      USUARIO_ID: ${param:usuario}
+    events:
+      - httpApi:
+          method: POST
+          path: /{herramienta}     # /recomendar y /chat son más específicas y van a sus Lambdas
+
+  chat:
+    name: promptcorn-chat
+    description: Orquestador del chat (Groq + tool calling + memoria)
+    handler: lambda_function.lambda_handler
+    package:
+      artifact: dist/aws/chat.zip
+    memorySize: 256
+    timeout: 29                    # API Gateway corta a los 30 s
+    environment:
+      CONVERSATIONS_TABLE: ${param:tablaConversaciones}
+      GROQ_API_KEY: ${env:GROQ_API_KEY}
+      GROQ_MODEL: ${param:groqModel}
+      MOCK_MODE: "false"
+      API_TOOLS_URL:               # la misma API: https://<id>.execute-api.<región>.amazonaws.com
+        Fn::Join:
+          - ""
+          - - "https://"
+            - Ref: HttpApi
+            - ".execute-api."
+            - Ref: AWS::Region
+            - ".amazonaws.com"
+    events:
+      - httpApi:
+          method: POST
+          path: /chat
+
+resources:
+  Resources:
+    TablaVistas:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${param:tablaVistas}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - { AttributeName: usuario_id, AttributeType: S }
+          - { AttributeName: pelicula_id, AttributeType: N }
+        KeySchema:
+          - { AttributeName: usuario_id, KeyType: HASH }
+          - { AttributeName: pelicula_id, KeyType: RANGE }
+
+    TablaPerfil:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${param:tablaPerfil}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - { AttributeName: usuario_id, AttributeType: S }
+        KeySchema:
+          - { AttributeName: usuario_id, KeyType: HASH }
+
+    TablaRecomendaciones:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${param:tablaRecomendaciones}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - { AttributeName: usuario_id, AttributeType: S }
+          - { AttributeName: sk, AttributeType: S }
+        KeySchema:
+          - { AttributeName: usuario_id, KeyType: HASH }
+          - { AttributeName: sk, KeyType: RANGE }
+
+    TablaConversaciones:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${param:tablaConversaciones}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - { AttributeName: usuario_id, AttributeType: S }
+          - { AttributeName: mensaje_id, AttributeType: S }
+        KeySchema:
+          - { AttributeName: usuario_id, KeyType: HASH }
+          - { AttributeName: mensaje_id, KeyType: RANGE }
+
+    BucketWeb:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${param:bucketWeb}
+        WebsiteConfiguration:
+          IndexDocument: index.html
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          IgnorePublicAcls: true
+          BlockPublicPolicy: false      # el sitio se publica con la policy de abajo (solo lectura)
+          RestrictPublicBuckets: false
+
+    BucketWebPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket:
+          Ref: BucketWeb
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal: "*"
+              Action: s3:GetObject
+              Resource:
+                Fn::Join: ["", ["arn:aws:s3:::", { Ref: BucketWeb }, "/*"]]
+
+  Outputs:
+    BucketWebNombre:
+      Value:
+        Ref: BucketWeb
+    SitioWebUrl:
+      Value:
+        Fn::GetAtt: [BucketWeb, WebsiteURL]

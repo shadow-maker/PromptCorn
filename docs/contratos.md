@@ -2,7 +2,7 @@
 
 Punto de contacto entre el chat (B) y el backend (A). Las películas se identifican **solo con el `id` propio** del catálogo (entero).
 
-Todas las herramientas cuelgan de una sola API de API Gateway (`promptcorn-tools-api`), con una ruta `POST /<herramienta>` cada una. El chat solo necesita la URL base (`API_TOOLS_URL`). Todas usan al usuario fijo de la app: el chat no manda el usuario.
+Todo cuelga de una sola HTTP API (definida en `serverless.yml`): `POST /chat`, `POST /recomendar` y `POST /<herramienta>` para las otras 5. El chat recibe la URL base en `API_TOOLS_URL` (la pone el despliegue). Todas usan al usuario fijo de la app: el chat no manda el usuario.
 
 | API | Ruta | Estado |
 |---|---|---|

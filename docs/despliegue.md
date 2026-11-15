@@ -1,201 +1,125 @@
-# Despliegue en AWS Academy (Learner Lab)
+# Despliegue en AWS Academy (Learner Lab) con Serverless Framework
 
-Región **us-east-1**, rol **`LabRole`** (Learner Lab no deja crear roles) y runtime **Python 3.14** en todas las Lambdas. La consola ofrece 3.15, pero los binarios (numpy, pydantic-core) están armados para 3.14 y no cargan en otra versión.
+Toda la infraestructura está en [`serverless.yml`](../serverless.yml): 3 Lambdas, la layer de numpy, una HTTP API con CORS, 4 tablas DynamoDB y el bucket del frontend. Se despliega con **Serverless Framework v4.46.0** (cuenta de serverless.com con org) desde una **EC2 de despliegue**, con un solo comando: `despliegue/desplegar.sh`.
 
-Los agentes de IA no tocan AWS: esta guía es para el equipo.
-
-## Cómo funciona
+- Región **us-east-1**, rol **`LabRole`** (Learner Lab no deja crear roles) y runtime **Python 3.14**.
+- **Secretos** (token de la API de metadatos y key de Groq): viven en `~/.promptcorn.env` de la EC2, fuera del repo. El despliegue los pasa a las variables de entorno de las Lambdas. Learner Lab no da acceso a SSM; en producción irían en SSM o Secrets Manager.
+- **La EC2 solo se usa para desplegar.** La app es 100 % serverless, así que no va en el diagrama de arquitectura.
+- **El modelo y el catálogo** se suben aparte desde tu máquina, porque los datos no están en el repo por la licencia. Van al bucket que ya existe, `utec-promptcorn-tools-datos`.
+- Los agentes de IA no tocan AWS: esta guía es para el equipo.
 
 ```
-GitHub (repo) ──git pull──► CloudShell o EC2 de despliegue ──despliegue/actualizar.sh──► Lambdas, layer, S3 web
-Tu máquina (datos locales) ──modelo y catálogo──────────────────────────────────────────► S3 (utec-promptcorn-tools-datos)
+GitHub ──git pull──► EC2 (desplegar.sh: empaqueta + serverless deploy) ──CloudFormation──► Lambdas, layer, API, tablas, bucket web
+Tu máquina (data/) ──modelo y catálogo──────────────────────────────────────────────────► S3 utec-promptcorn-tools-datos
 ```
 
-- **Una sola vez, en la consola:** se crean los recursos vacíos (buckets, tablas, Lambdas, APIs) y se cargan los secretos en las variables de entorno.
-- **En cada cambio:** en la máquina de despliegue se corre `despliegue/actualizar.sh`. El script hace `git pull`, empaqueta y actualiza las Lambdas. No se sube ningún zip a mano.
-- **El modelo y el catálogo** se suben desde tu máquina, porque los datos no están en el repo por la licencia. Casi nunca cambian.
-- **Los secretos** (token de la API de metadatos y key de Groq) van en las variables de entorno de cada Lambda, que Lambda guarda cifradas. Learner Lab no da acceso a SSM Parameter Store; en producción irían ahí o en Secrets Manager. El script nunca toca las variables de entorno.
-- **La configuración que no es secreta** (nombres de buckets y Lambdas, URL del chat) está en `despliegue/config.sh`.
+| Recurso | Nombre |
+|---|---|
+| Stack de CloudFormation | `promptcorn-prod` |
+| Lambdas | `promptcorn-tools-recomendar`, `promptcorn-tools-herramientas`, `promptcorn-chat` |
+| Layer | `promptcorn-tools-numpy` |
+| API (una sola) | `POST /chat`, `POST /recomendar`, `POST /{herramienta}` |
+| Tablas | `promptcorn-tools-vistas`, `promptcorn-tools-perfil`, `promptcorn-tools-recomendaciones`, `promptcorn-chat-conversaciones` |
+| Buckets | `utec-promptcorn-tools-datos` (ya existe) y `utec-promptcorn-chat-web` (lo crea el despliegue) |
 
 ---
 
-## Parte 1. Crear los recursos (una vez, en la consola)
+## Parte 0. Antes de empezar (en tu máquina)
 
-### 1.1 S3
-- **`utec-promptcorn-tools-datos`** (ya existe): **Block all public access** activado. Las carpetas `modelo/` y `catalogo/` se llenan en la parte 3.
-- **`utec-promptcorn-chat-web`** (frontend):
-  1. **Create bucket** y desmarca **Block all public access**.
-  2. **Properties → Static website hosting → Enable**, con index document `index.html`.
-  3. **Permissions → Bucket policy:**
-     ```json
-     {"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Principal": "*", "Action": "s3:GetObject",
-       "Resource": "arn:aws:s3:::utec-promptcorn-chat-web/*"}]}
-     ```
-
-### 1.2 DynamoDB (4 tablas, **Capacity mode: On-demand**)
-
-| Tabla | Partition key | Sort key |
-|---|---|---|
-| `promptcorn-tools-vistas` | `usuario_id` (String) | `pelicula_id` (**Number**) |
-| `promptcorn-tools-perfil` | `usuario_id` (String) | — |
-| `promptcorn-tools-recomendaciones` | `usuario_id` (String) | `sk` (String) |
-| `promptcorn-chat-conversaciones` | `usuario_id` (String) | `mensaje_id` (String) |
-
-El tipo se elige en el desplegable al lado de cada key. Para verificarlo: Tables → `promptcorn-tools-vistas` → **Overview** debe decir `pelicula_id (Number)`. Si quedó como String, borra la tabla y créala de nuevo.
-
-### 1.3 Lambdas (vacías: el código lo sube el script)
-Lambda → **Create function → Author from scratch**, tres veces, todas con Runtime **Python 3.14**, Architecture **x86_64** y **Use an existing role → `LabRole`**. No subas código ni cambies el handler: el script fija handler, memoria y timeout.
-
-Después, en **Configuration → Environment variables** de cada una:
-
-**`promptcorn-tools-recomendar`**
-
-| Key | Value |
-|---|---|
-| `BUCKET_ARTEFACTOS` | `utec-promptcorn-tools-datos` |
-| `PREFIJO_ARTEFACTOS` | `modelo/` |
-| `TABLA_VISTAS` | `promptcorn-tools-vistas` |
-| `TABLA_PERFIL` | `promptcorn-tools-perfil` |
-| `TABLA_RECOMENDACIONES` | `promptcorn-tools-recomendaciones` |
-| `USUARIO_ID` | `usuario-demo` |
-
-**`promptcorn-tools-herramientas`**
-
-| Key | Value |
-|---|---|
-| `BUCKET_CATALOGO` | `utec-promptcorn-tools-datos` |
-| `PREFIJO_CATALOGO` | `catalogo/` |
-| `TMDB_TOKEN` | El token. Cópialo sin mostrarlo con `pbcopy < ~/.config/promptcorn/tmdb_token` |
-| `TABLA_VISTAS` | `promptcorn-tools-vistas` |
-| `TABLA_PERFIL` | `promptcorn-tools-perfil` |
-| `TABLA_RECOMENDACIONES` | `promptcorn-tools-recomendaciones` |
-| `USUARIO_ID` | `usuario-demo` |
-
-**`promptcorn-chat`**
-
-| Key | Value |
-|---|---|
-| `CONVERSATIONS_TABLE` | `promptcorn-chat-conversaciones` |
-| `GROQ_API_KEY` | La key de Groq |
-| `GROQ_MODEL` | `openai/gpt-oss-20b` |
-| `MOCK_MODE` | `false` |
-| `API_TOOLS_URL` | Invoke URL de `promptcorn-tools-api` (paso 1.4), sin `/` al final |
-
-### 1.4 API Gateway (2 HTTP APIs)
-1. **`promptcorn-tools-api`:** Create API → HTTP API → Build.
-   - Integrations: Lambda `promptcorn-tools-recomendar` y Lambda `promptcorn-tools-herramientas`.
-   - Routes:
-     - `POST /recomendar` → recomendar.
-     - `POST /{herramienta}` → herramientas. Una sola ruta cubre las 5 herramientas.
-   - Stage `$default` con auto-deploy.
-   - Copia la Invoke URL en `API_TOOLS_URL` de `promptcorn-chat`.
-2. **`promptcorn-chat-api`:**
-   - Integration: Lambda `promptcorn-chat`.
-   - Route: `POST /chat`.
-   - Stage `$default` con auto-deploy.
-   - **CORS:** origin `*`, methods `POST, OPTIONS`, headers `content-type`.
-   - Pon la Invoke URL + `/chat` en `CHAT_API_URL` de `despliegue/config.sh`, y haz commit y push. Esta URL es pública; no es un secreto.
-
----
-
-## Parte 2. Preparar la máquina de despliegue (una vez)
-
-### Opción A: AWS CloudShell (recomendada)
-1. En la consola, ícono **`>_`** (barra superior), en us-east-1.
-2. Clona el repo:
+1. **Org de Serverless.** En `serverless.yml`, reemplaza `REEMPLAZAR_CON_TU_ORG` por el nombre de tu org. Lo ves en [app.serverless.com](https://app.serverless.com), arriba a la izquierda. No es secreto. Después:
    ```bash
-   git clone https://github.com/shadow-maker/PromptCorn.git
+   git commit -am "serverless.yml: org" && git push
    ```
-El home de CloudShell persiste entre sesiones: el repo queda clonado para la próxima vez.
+2. **Si ya creaste a mano recursos con estos nombres** (tablas, Lambdas, APIs o el bucket web), bórralos: CloudFormation no puede crear algo que ya existe. Revisa también CloudWatch → Log groups `/aws/lambda/promptcorn-*`. **No borres `utec-promptcorn-tools-datos`.**
+3. **Modelo y catálogo:**
+   ```bash
+   .venv/bin/python -I ml/entrenar.py                                         # -> ml/artefactos/ (3 archivos)
+   .venv/bin/python -I scripts/exportar_catalogo.py --salida dist/catalogo    # -> dist/catalogo/ (2 archivos)
+   ```
+   En la consola, S3 → `utec-promptcorn-tools-datos`:
+   - **Create folder** `modelo` → **Upload** `vectores.npy`, `catalogo_ml.json` y `meta.json`.
+   - **Create folder** `catalogo` → **Upload** `catalogo.json` e `ids_externos.json`.
 
-### Opción B: EC2 (si CloudShell no está disponible)
-1. EC2 → **Launch instance:**
+   Deben quedar en `modelo/vectores.npy` y `catalogo/catalogo.json`.
+
+---
+
+## Parte 1. EC2 de despliegue (una vez)
+
+1. Learner Lab → **Start Lab** → **AWS**. Revisa que la región sea **us-east-1**.
+2. EC2 → **Launch instance:**
    - Nombre `promptcorn-despliegue`.
-   - **Amazon Linux 2023**, tipo **t3.micro**.
+   - **Amazon Linux 2023**, tipo **t3.small**. La t3.micro tiene poca memoria para npm.
    - Key pair `vockey`, o ninguno si te conectas con EC2 Instance Connect.
-   - En **Advanced details → IAM instance profile** elige **`LabInstanceProfile`**. Así la instancia tiene las credenciales del lab sin copiar llaves.
-2. **Connect → EC2 Instance Connect**, y luego:
+   - **Advanced details → IAM instance profile → `LabInstanceProfile`.** Así la EC2 tiene las credenciales del lab y no hay que copiar llaves de AWS.
+   - Launch.
+3. **Connect → EC2 Instance Connect → Connect.**
+4. Instala las herramientas:
    ```bash
    sudo dnf install -y git zip python3-pip
+   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+   source ~/.bashrc && nvm install 22
+   npm install -g serverless@4.46.0
    git clone https://github.com/shadow-maker/PromptCorn.git
    ```
-3. **Detén la instancia (Stop) cuando no estés desplegando,** para no gastar créditos del lab.
-
-Esta EC2 solo se usa para desplegar. La app sigue siendo 100 % serverless, así que no va en el diagrama de arquitectura.
-
-### Node (solo para desplegar el frontend)
-Vite necesita Node 20.19 o superior. Comprueba con `node -v`. Si falta o es más viejo:
-```bash
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash && source ~/.bashrc && nvm install 22
-```
-
----
-
-## Parte 3. Modelo y catálogo a S3 (desde tu máquina)
-Los datos no están en el repo, así que esto sale de tu máquina:
-```bash
-.venv/bin/python -I ml/entrenar.py            # -> ml/artefactos/
-tools/recomendar/empaquetar.sh                # -> dist/modelo/
-tools/herramientas/empaquetar.sh              # -> dist/catalogo/
-```
-En la consola, bucket `utec-promptcorn-tools-datos`:
-- **Create folder** `modelo` → **Upload** los 3 archivos de `dist/modelo/`.
-- **Create folder** `catalogo` → **Upload** los 2 archivos de `dist/catalogo/`.
-
-Deben quedar en `modelo/vectores.npy` y `catalogo/catalogo.json`, no en una subcarpeta extra.
-
-Alternativa: si configuras en tu máquina la AWS CLI con las credenciales del lab (Learner Lab → **AWS Details → AWS CLI → Show**, copiadas en `~/.aws/credentials`; vencen con la sesión), puedes usar `despliegue/actualizar.sh modelo catalogo`.
+5. **Inicia sesión en Serverless:** `serverless login`. Abre en tu navegador el link que aparece, entra con la cuenta de la org y vuelve a la terminal.
+   - Alternativa: en app.serverless.com → **Settings → Access Keys**, crea una key y agrégala abajo como `export SERVERLESS_ACCESS_KEY='...'`.
+6. **Secretos:** `nano ~/.promptcorn.env` con este contenido:
+   ```bash
+   export TMDB_TOKEN='...'      # en tu Mac: pbcopy < ~/.config/promptcorn/tmdb_token, y pegar aquí
+   export GROQ_API_KEY='...'    # la key de Groq de B
+   ```
+   Guarda con Ctrl+O, Enter y Ctrl+X. Luego: `chmod 600 ~/.promptcorn.env`
 
 ---
 
-## Parte 4. Desplegar el código
+## Parte 2. Desplegar
 
-En la máquina de despliegue:
 ```bash
 cd PromptCorn
-despliegue/actualizar.sh todo     # la primera vez: layer de numpy + 3 Lambdas + frontend
+despliegue/desplegar.sh
 ```
-**Después de cada cambio en el repo:**
-```bash
-cd PromptCorn
-despliegue/actualizar.sh          # git pull + las 3 Lambdas (~1 min)
-despliegue/actualizar.sh chat     # o solo lo que cambió: recomendar, herramientas, chat, frontend
-```
+El script hace todo esto:
+1. `git pull`.
+2. Empaqueta las 3 Lambdas con sus dependencias para Linux (y la layer de numpy la primera vez).
+3. `serverless deploy`, que crea o actualiza el stack. La primera vez tarda unos 3–5 minutos.
+4. Compila el frontend con la URL de la API, que toma sola del stack, y lo sube a `utec-promptcorn-chat-web`.
 
-| Componente | Qué hace |
+Al final muestra los endpoints de la API y la URL del sitio.
+
+**Después de cada cambio en el repo:** `despliegue/desplegar.sh`. Solo se actualiza lo que cambió.
+
+| Comando | Qué hace |
 |---|---|
-| `recomendar`, `herramientas`, `chat` | Empaqueta la carpeta, sube el código y fija runtime, handler, memoria y timeout |
-| `frontend` | Compila con `CHAT_API_URL` y sincroniza `utec-promptcorn-chat-web` |
-| `capa` | Publica una versión nueva de la layer de numpy y la conecta a `recomendar`. Solo hace falta la primera vez |
-| `modelo`, `catalogo` | Suben los datos a S3. Solo funcionan donde están los datos (tu máquina) |
-| `todo` | Todo lo anterior que se pueda en esa máquina |
+| `despliegue/desplegar.sh` | Todo: backend + frontend |
+| `despliegue/desplegar.sh backend` | Solo Lambdas, API y tablas |
+| `despliegue/desplegar.sh frontend` | Solo el sitio web |
+| `serverless info` | Endpoints y recursos del stack |
+| `serverless logs -f chat` (o `recomendar`, `herramientas`) | Logs de una Lambda |
+| `CAPA=1 despliegue/desplegar.sh backend` | Rearma la layer de numpy (no hace falta normalmente) |
 
-`DRY_RUN=1 despliegue/actualizar.sh todo` muestra los comandos sin ejecutarlos.
+**Apaga la EC2 (Instance state → Stop) cuando termines,** para no gastar créditos. Si el lab se reinicia, enciéndela de nuevo: todo sigue ahí.
+
+**Datos nuevos (modelo o catálogo):** súbelos como en la parte 0.3 y corre `despliegue/desplegar.sh backend` para que las Lambdas los vuelvan a cargar.
 
 ---
 
-## Parte 5. Probar
+## Parte 3. Probar
 
-**En la consola de cada Lambda (Test),** con los eventos del repo:
-
-| Lambda | Evento | Esperado |
-|---|---|---|
-| recomendar | `tools/recomendar/eventos/01_basico.json` | `modo: arranque_en_frio` y un aviso de que no hay plataformas guardadas |
-| herramientas | `tools/herramientas/eventos/01_buscar.json` | Interestelar (`id` 8318) primero |
-| herramientas | `03_donde_ver.json` | `avisos: []`. Si trae un aviso, revisa `TMDB_TOKEN` |
-| herramientas | `04_guardar_plataformas.json` y `05_registrar_vista.json` | `ok: true` |
-| recomendar | `01_basico.json` otra vez | Ahora `modo: perfil`, motivo "Interestelar", solo en Netflix, Prime Video o HBO Max |
-| chat | `{"body": "{\"usuario_id\": \"prueba\", \"mensaje\": \"Recomiéndame una comedia corta\"}"}` | `statusCode: 200` con películas del catálogo |
-
-**Por HTTP:**
+**Por HTTP** (la URL sale al final del despliegue o con `serverless info`):
 ```bash
-API=<invoke-url de promptcorn-tools-api>
+API=https://xxxx.execute-api.us-east-1.amazonaws.com
 curl -s -X POST $API/recomendar -H 'Content-Type: application/json' -d '{"cantidad": 2, "guardar": false}'
-curl -s -X POST $API/buscar_pelicula -H 'Content-Type: application/json' -d '{"titulo": "Matrix"}'
-curl -s -X POST <invoke-url de promptcorn-chat-api>/chat -H 'Content-Type: application/json' -d '{"usuario_id":"prueba","mensaje":"hola"}'
+curl -s -X POST $API/buscar_pelicula -H 'Content-Type: application/json' -d '{"titulo": "Interstellar"}'
+curl -s -X POST $API/chat -H 'Content-Type: application/json' -d '{"usuario_id":"prueba","mensaje":"Recomiéndame una comedia corta"}'
 ```
+- `recomendar`: 2 películas en `modo: arranque_en_frio`.
+- `buscar_pelicula`: Interestelar (`id` 8318) primero.
+- `chat`: `respuesta` con películas del catálogo.
 
-**En el navegador** (URL de Static website hosting de `utec-promptcorn-chat-web`), escribe esta conversación en orden:
+**En la consola de Lambda (Test),** con los eventos de `tools/recomendar/eventos/` y `tools/herramientas/eventos/`. Hay una tabla de lo esperado más abajo.
+
+**En el navegador**, con la URL del sitio, escribe esta conversación en orden:
 1. "Tengo Netflix, Prime y HBO"
 2. "Vi Interstellar y me encantó, le pongo 5"
 3. "Recomiéndame algo" → debe salir el motivo "Interestelar"
@@ -205,21 +129,29 @@ curl -s -X POST <invoke-url de promptcorn-chat-api>/chat -H 'Content-Type: appli
 7. "¿Y Oppenheimer?" → debe explicar que no está en el catálogo
 8. "¿Qué me recomendaste hoy?"
 
+| Evento de consola | Esperado |
+|---|---|
+| recomendar `01_basico.json` | `modo: arranque_en_frio`, aviso de que no hay plataformas guardadas |
+| herramientas `03_donde_ver.json` | `avisos: []`. Si trae un aviso, revisa `TMDB_TOKEN` |
+| herramientas `04_guardar_plataformas.json` y `05_registrar_vista.json`, luego recomendar `01_basico.json` | `modo: perfil`, motivo "Interestelar" |
+
 ---
 
 ## Si algo falla
 | Síntoma | Causa probable |
 |---|---|
-| `AccessDenied` (Lambda) | La función no usa `LabRole` |
-| `AccessDenied` (script en EC2) | La instancia no tiene `LabInstanceProfile`: **Actions → Security → Modify IAM role** |
-| `ResourceNotFoundException` (script) | El nombre de la Lambda o del bucket no coincide con `despliegue/config.sh` |
-| `Runtime.ImportModuleError` | La Lambda no está en Python 3.14, o falta la layer (corre `actualizar.sh capa`) |
-| Error 500 | Lambda → **Monitor → View CloudWatch logs**. La línea `ERROR ...` dice qué pasó |
-| `NoSuchKey` en los logs | Faltan archivos en `modelo/` o `catalogo/` del bucket |
-| `recomendar` siempre en `arranque_en_frio` | `pelicula_id` quedó como String, o `USUARIO_ID` es distinto entre las Lambdas |
-| `ver_donde_ver` siempre con aviso | Falta `TMDB_TOKEN` o está mal copiado |
-| El chat tarda más de 30 s o da 503 | Groq lento: revisa los logs de `promptcorn-chat` |
-| El navegador muestra un error de CORS | Falta la configuración de CORS en `promptcorn-chat-api` |
-| `npm` falla al desplegar el frontend | Node viejo: ver "Node" en la parte 2 |
-| La primera llamada es lenta (1–3 s) | Es normal: carga el modelo y el catálogo |
+| `REEMPLAZAR_CON_TU_ORG` | Falta poner la org en `serverless.yml` (parte 0.1) |
+| `falta TMDB_TOKEN / GROQ_API_KEY` | Falta `~/.promptcorn.env`, o no se cargó (parte 1.6) |
+| El deploy pide login o falla con la licencia | `serverless login` otra vez, o `SERVERLESS_ACCESS_KEY` en `~/.promptcorn.env` |
+| `Unable to locate credentials` o `AccessDenied` al desplegar | La EC2 no tiene `LabInstanceProfile`: **Actions → Security → Modify IAM role** |
+| `... already exists` | Un recurso con ese nombre se creó a mano: bórralo (parte 0.2) y vuelve a desplegar |
+| El stack queda en `ROLLBACK_COMPLETE` | CloudFormation → `promptcorn-prod` → **Events** muestra la causa. Borra el stack y vuelve a desplegar |
+| Advertencia sobre el runtime `python3.14` | Si la versión de Serverless no lo tiene en su lista, solo advierte; el deploy sigue |
+| Error 500 | `serverless logs -f <función>`, o CloudWatch. La línea `ERROR ...` dice qué pasó |
+| `NoSuchKey` en los logs | Faltan archivos en `modelo/` o `catalogo/` de `utec-promptcorn-tools-datos` |
+| `recomendar` siempre en `arranque_en_frio` | Todavía no hay notas en `promptcorn-tools-vistas` |
+| El chat tarda más de 30 s o da 503 | Groq lento: `serverless logs -f chat` |
+| `npm` falla | Node viejo: `nvm install 22` |
 | Nada responde | La sesión del lab expiró. **Start Lab** de nuevo; los recursos se conservan |
+
+`serverless remove` borra todo el stack, **incluidas las tablas con sus datos**. Úsalo solo para empezar de cero. No toca `utec-promptcorn-tools-datos`.

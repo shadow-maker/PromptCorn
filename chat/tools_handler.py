@@ -7,7 +7,7 @@ import requests
 # False: conecta con las APIs reales de Persona A.
 MOCK_MODE = os.getenv("MOCK_MODE", "true").lower() == "true"
 
-# Todas las herramientas cuelgan de una sola API Gateway (promptcorn-tools-api),
+# Todas las herramientas cuelgan de la misma HTTP API que el chat (serverless.yml),
 # con una ruta POST /<herramienta>. Basta con la URL base.
 # Opcional: una variable por herramienta para apuntar a otra URL.
 TOOL_URLS = {
