@@ -63,11 +63,23 @@ paths:
                 properties:
                   usuario_id: { type: string }
                   respuesta: { type: string }
+                  peliculas:
+                    type: array
+                    description: "Recomendaciones de la última llamada a recomendar del turno (máx. 5); [] si no hubo. El frontend muestra sus pósters en fila."
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        titulo: { type: string }
+                        anio: { type: integer, nullable: true }
+                        poster_url: { type: string, nullable: true, description: "Imagen del CDN de TMDB (w342); null si no hay póster" }
                   reintentar: { type: boolean, description: "true si se alcanzó el límite de uso de Groq: reenviar en unos segundos" }
                   traza: { type: array, items: { type: object }, description: "Solo con depurar: true" }
               example:
                 usuario_id: prueba-swagger
                 respuesta: "¡Claro! **Matrix** (1999) está disponible hoy en Perú en:\n\n- **HBO Max**\n- **Claro Video**"
+                peliculas:
+                  - { id: 603, titulo: Matrix, anio: 1999, poster_url: "https://image.tmdb.org/t/p/w342/abc123.jpg" }
         "400": { $ref: "#/components/responses/Error400" }
         "500": { $ref: "#/components/responses/Error500" }
 
@@ -349,7 +361,7 @@ components:
     RecomendarRequest:
       type: object
       properties:
-        cantidad: { type: integer, minimum: 1, maximum: 10, default: 3 }
+        cantidad: { type: integer, minimum: 1, maximum: 5, default: 3 }
         generos:
           type: array
           items:

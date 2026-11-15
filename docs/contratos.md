@@ -24,7 +24,7 @@ Todo cuelga de una sola HTTP API (definida en `serverless.yml`): `POST /chat`, `
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| `cantidad` | int 1–10 | Cuántas devolver (por defecto 3) |
+| `cantidad` | int 1–5 | Cuántas devolver (por defecto 3) |
 | `generos` | list[str] | Al menos uno de estos géneros. Vocabulario: Acción, Animación, Aventura, Bélica, Ciencia ficción, Comedia, Crimen, Documental, Drama, Familia, Fantasía, Historia, Misterio, Música, Película de TV, Romance, Suspenso, Terror, Western |
 | `duracion_max` | int | Minutos |
 | `anio_min`, `anio_max` | int | Rango de año de estreno |
@@ -167,6 +167,8 @@ Borra todo lo del usuario fijo en `Vistas`, `Perfil` y `Recomendaciones`, y vuel
 ## Chat (B → frontend)
 
 `POST /chat` con `{"usuario_id": "<id local del navegador>", "mensaje": "texto"}` → `{"usuario_id": "...", "respuesta": "texto del bot"}`. Con `"depurar": true` también devuelve `traza`: cada llamada a Groq y cada herramienta con sus argumentos y resultado. Esa misma traza queda siempre en CloudWatch (`serverless logs -f chat`), una línea JSON por turno. Aquí `usuario_id` solo separa conversaciones en la memoria (`promptcorn-chat-conversaciones`). Las herramientas son de un solo usuario (`usuario-demo`).
+
+La respuesta incluye siempre `peliculas`: las recomendaciones de la última llamada a `recomendar` de ese turno (máx. 5), o `[]` si no hubo. Cada una es `{"id": int, "titulo": str, "anio": int|null, "poster_url": str|null}`. `poster_url` es `https://image.tmdb.org/t/p/w342` + la ruta del póster de TMDB (`null` si no hay); lo carga el navegador desde el CDN de imágenes de TMDB, cuya atribución ya está en el pie de página. El frontend las muestra como un mensaje aparte con los pósters en fila. No se guardan en la memoria de la conversación. Si hay un límite de uso de Groq (`reintentar: true`), `peliculas` es `[]`.
 
 ## Tablas DynamoDB (de A)
 

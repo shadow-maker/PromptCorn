@@ -127,7 +127,7 @@ class TestHandler(unittest.TestCase):
         al = AlmacenMemoria(recomendaciones=[
             {"sk": "2026-11-15T10:00:00Z#4", "pelicula_id": 4},   # hace 10 h -> se excluye
             {"sk": "2026-11-13T10:00:00Z#1", "pelicula_id": 1}])  # hace 2 días -> puede volver
-        r = handler.recomendar({"cantidad": 10, "guardar": False}, al, self.AHORA)
+        r = handler.recomendar({"cantidad": 5, "guardar": False}, al, self.AHORA)
         ids = [x["id"] for x in r["recomendaciones"]]
         self.assertNotIn(4, ids)
         self.assertIn(1, ids)
@@ -137,7 +137,7 @@ class TestHandler(unittest.TestCase):
 
     def test_vista_sin_nota_solo_se_excluye(self):
         al = AlmacenMemoria(vistas=[{"pelicula_id": 4, "estado": "visto"}])
-        r = handler.recomendar({"cantidad": 10, "guardar": False}, al, self.AHORA)
+        r = handler.recomendar({"cantidad": 5, "guardar": False}, al, self.AHORA)
         self.assertEqual(r["modo"], "arranque_en_frio")
         self.assertNotIn(4, [x["id"] for x in r["recomendaciones"]])
 
@@ -148,8 +148,10 @@ class TestHandler(unittest.TestCase):
         with self.assertRaises(handler.ErrorEntrada) as e:
             handler.recomendar({"generos": ["Acción", "Anime"]}, al, self.AHORA)
         self.assertIn("generos_validos", e.exception.cuerpo)
-        with self.assertRaises(handler.ErrorEntrada):
-            handler.recomendar({"cantidad": 50}, al, self.AHORA)
+        for demasiadas in (6, 50):  # el máximo es 5
+            with self.assertRaises(handler.ErrorEntrada):
+                handler.recomendar({"cantidad": demasiadas}, al, self.AHORA)
+        handler.recomendar({"cantidad": 5, "guardar": False}, al, self.AHORA)
         self.assertEqual(handler.recomendar({"cantidad": "2", "guardar": False}, al, self.AHORA)["filtros_aplicados"]["plataformas"], ["Netflix"])
 
     def test_plataformas_null_usa_las_del_perfil(self):

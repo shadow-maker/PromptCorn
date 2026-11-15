@@ -150,6 +150,43 @@ class TestLimites(unittest.TestCase):
         lambda_handler(evento("vi iron man"), None)
         mock_herramienta.assert_called_once_with("buscar_pelicula", {"titulo": "Iron Man"})
 
+    RECS = {"modo": "perfil", "recomendaciones": [
+        {"id": 7, "titulo": "Matrix", "anio": 1999, "poster": "/m.jpg", "sinopsis": "x"},
+        {"id": 8, "titulo": "Sin póster", "anio": None, "poster": None, "sinopsis": "y"}]}
+
+    @patch("lambda_function.ejecutar_herramienta", return_value=RECS)
+    @patch("lambda_function.guardar_mensaje")
+    @patch("lambda_function.obtener_conversacion", return_value=[])
+    @patch("lambda_function.consultar_groq")
+    def test_devuelve_peliculas_con_poster_url(self, mock_groq, *_):
+        llamada = SimpleNamespace(id="c1", function=SimpleNamespace(name="recomendar", arguments="{}"))
+        mock_groq.side_effect = [FakeMensaje(tool_calls=[llamada]), FakeMensaje(content="listo")]
+        body = json.loads(lambda_handler(evento("algo"), None)["body"])
+        self.assertEqual(body["peliculas"], [
+            {"id": 7, "titulo": "Matrix", "anio": 1999, "poster_url": "https://image.tmdb.org/t/p/w342/m.jpg"},
+            {"id": 8, "titulo": "Sin póster", "anio": None, "poster_url": None}])
+        # el LLM no recibe el póster
+        tool_msg = [m for m in mock_groq.call_args_list[1].args[0] if m.get("role") == "tool"][0]
+        self.assertNotIn("poster", tool_msg["content"])
+
+    @patch("lambda_function.guardar_mensaje")
+    @patch("lambda_function.obtener_conversacion", return_value=[])
+    @patch("lambda_function.consultar_groq")
+    def test_sin_recomendar_peliculas_vacio(self, mock_groq, *_):
+        mock_groq.side_effect = [FakeMensaje(content="hola")]
+        body = json.loads(lambda_handler(evento("hola"), None)["body"])
+        self.assertEqual(body["peliculas"], [])
+
+    @patch("lambda_function.ejecutar_herramienta", return_value={"modo": "perfil", "recomendaciones": []})
+    @patch("lambda_function.guardar_mensaje")
+    @patch("lambda_function.obtener_conversacion", return_value=[])
+    @patch("lambda_function.consultar_groq")
+    def test_limita_cantidad_a_5(self, mock_groq, _o, _g, mock_herramienta):
+        llamada = SimpleNamespace(id="c1", function=SimpleNamespace(name="recomendar", arguments='{"cantidad": 9}'))
+        mock_groq.side_effect = [FakeMensaje(tool_calls=[llamada]), FakeMensaje(content="ok")]
+        lambda_handler(evento("dame 9"), None)
+        mock_herramienta.assert_called_once_with("recomendar", {"cantidad": 5})
+
 
 if __name__ == "__main__":
     unittest.main()

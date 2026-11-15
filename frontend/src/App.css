@@ -255,6 +255,48 @@
   overflow-wrap: anywhere;
 }
 
+/* Pósters de las recomendaciones: mensaje aparte, en fila */
+.message-content {
+  min-width: 0;
+}
+
+.message-bubble.posters-bubble {
+  background: transparent;
+  padding: 0;
+  max-width: 100%;
+}
+
+.posters-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+
+.poster {
+  margin: 0;
+  flex: 0 0 120px;
+  width: 120px;
+}
+
+.poster img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  background: #292f40;
+  border-radius: 8px;
+}
+
+.poster figcaption {
+  margin-top: 6px;
+  color: #a7adbd;
+  font-size: 11px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
 /* Respuestas del bot en Markdown (negritas, listas, tablas) */
 .message-row.assistant .message-bubble {
   white-space: normal;
@@ -472,6 +514,11 @@
 
   .message-row {
     max-width: 100%;
+  }
+
+  .poster {
+    flex-basis: 96px;
+    width: 96px;
   }
 
   .composer {

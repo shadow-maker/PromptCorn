@@ -99,6 +99,7 @@ function App() {
 
     try {
       let assistantResponse;
+      let peliculas = [];
 
       if (!API_URL) {
         // Modo demostración mientras se configura API Gateway.
@@ -137,6 +138,10 @@ function App() {
         if (!assistantResponse) {
           throw new Error("El servidor no devolvió una respuesta válida.");
         }
+
+        if (Array.isArray(data.peliculas)) {
+          peliculas = data.peliculas.filter((p) => p && p.poster_url);
+        }
       }
 
       setMessages((previous) => [
@@ -146,6 +151,17 @@ function App() {
           role: "assistant",
           content: assistantResponse,
         },
+        // Los pósters van en un mensaje aparte, después del texto.
+        ...(peliculas.length > 0
+          ? [
+              {
+                id: Date.now() + 2,
+                role: "assistant",
+                tipo: "posters",
+                peliculas,
+              },
+            ]
+          : []),
       ]);
     } catch (err) {
       setError(err.message || "No se pudo conectar con el servidor.");
@@ -313,8 +329,28 @@ function App() {
                   <span className="message-author">
                     {message.role === "assistant" ? "PromptCorn" : "Tú"}
                   </span>
-                  <div className="message-bubble">
-                    {message.role === "assistant" ? (
+                  <div
+                    className={`message-bubble${
+                      message.tipo === "posters" ? " posters-bubble" : ""
+                    }`}
+                  >
+                    {message.tipo === "posters" ? (
+                      <div className="posters-row">
+                        {message.peliculas.map((p) => (
+                          <figure className="poster" key={p.id ?? p.poster_url}>
+                            <img
+                              src={p.poster_url}
+                              alt={`Póster de ${p.titulo} (${p.anio ?? "s/f"})`}
+                              loading="lazy"
+                            />
+                            <figcaption>
+                              {p.titulo}
+                              {p.anio ? ` (${p.anio})` : ""}
+                            </figcaption>
+                          </figure>
+                        ))}
+                      </div>
+                    ) : message.role === "assistant" ? (
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{

@@ -29,7 +29,7 @@ from recomendador import Recomendador
 
 USUARIO = os.environ.get("USUARIO_ID", "usuario-demo")
 HORAS_SIN_REPETIR = float(os.environ.get("HORAS_SIN_REPETIR", "24"))
-CANTIDAD_DEFECTO, CANTIDAD_MAX = 3, 10
+CANTIDAD_DEFECTO, CANTIDAD_MAX = 3, 5
 
 
 class ErrorEntrada(Exception):

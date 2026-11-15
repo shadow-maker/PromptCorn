@@ -23,6 +23,12 @@ GENEROS = [
 
 ID = {"type": "integer", "description": "id devuelto por otra herramienta."}
 
+# Máximo de recomendaciones por pedido (igual que tools/recomendar).
+CANTIDAD_MAX = 5
+
+# Los pósters se sirven desde el CDN de imágenes de TMDB (w342 = 342 px de ancho).
+POSTER_BASE_URL = "https://image.tmdb.org/t/p/w342"
+
 
 def _admite_null(esquema):
     """
@@ -64,7 +70,7 @@ TOOLS = [
         "plataformas del usuario; pasa solo los filtros pedidos. No repite lo "
         "recomendado en 24 h.",
         {
-            "cantidad": {"type": "integer", "minimum": 1, "maximum": 10,
+            "cantidad": {"type": "integer", "minimum": 1, "maximum": CANTIDAD_MAX,
                          "description": "Por defecto 3."},
             "generos": {"type": "array",
                         "items": {"type": "string", "enum": GENEROS}},
@@ -148,6 +154,22 @@ def para_llm(valor):
     return valor
 
 
+def peliculas_para_frontend(recomendaciones):
+    """Recomendaciones de la herramienta -> lista para mostrar los pósters en el frontend."""
+    peliculas = []
+    for r in recomendaciones[:CANTIDAD_MAX]:
+        if not isinstance(r, dict):
+            continue
+        poster = r.get("poster")
+        peliculas.append({
+            "id": r.get("id"),
+            "titulo": r.get("titulo"),
+            "anio": r.get("anio"),
+            "poster_url": POSTER_BASE_URL + poster if poster else None,
+        })
+    return peliculas
+
+
 def depuracion_activa(body):
     """La depuración la habilita el servidor (variable DEPURAR=1); el cliente solo puede pedirla."""
     return (
@@ -181,13 +203,18 @@ def consultar_con_reintento(messages, traza, intentos=3):
 # PROCESAMIENTO DEL MENSAJE CONVERSACIONAL
 # ============================================================
 
-def procesar_mensaje(usuario_id, mensaje, traza=None):
+def procesar_mensaje(usuario_id, mensaje, traza=None, peliculas=None):
     """
     traza: lista opcional donde se anota cada paso (llamadas a Groq y
     herramientas con argumentos y resultado) para depurar.
+    peliculas: lista opcional donde se deja lo de la última llamada exitosa a
+    `recomendar` del turno ({id, titulo, anio, poster_url}), para que el
+    frontend muestre los pósters. No se guarda en la memoria de la conversación.
     """
     if traza is None:
         traza = []
+    if peliculas is None:
+        peliculas = []
 
     # Recuperar el historial de conversación del usuario.
     historial = obtener_conversacion(usuario_id)
@@ -291,10 +318,22 @@ def procesar_mensaje(usuario_id, mensaje, traza=None):
                 # Las herramientas son de un solo usuario (el fijo de la
                 # app): no se les manda el usuario_id del chat.
 
+                # Tope de recomendaciones por pedido, aunque el modelo pida más.
+                if nombre_herramienta == "recomendar" and isinstance(argumentos.get("cantidad"), (int, float)):
+                    argumentos["cantidad"] = min(argumentos["cantidad"], CANTIDAD_MAX)
+
                 resultado = ejecutar_herramienta(
                     nombre_herramienta,
                     argumentos
                 )
+
+                # Los pósters se toman del resultado crudo: para_llm los quita.
+                if (
+                    nombre_herramienta == "recomendar"
+                    and isinstance(resultado, dict)
+                    and isinstance(resultado.get("recomendaciones"), list)
+                ):
+                    peliculas[:] = peliculas_para_frontend(resultado["recomendaciones"])
 
                 contenido_resultado = json.dumps(
                     para_llm(resultado),
@@ -435,10 +474,12 @@ def lambda_handler(event, context):
         # Procesar la conversación (con traza para depurar).
         inicio = time.time()
         traza = []
+        peliculas = []
         respuesta = procesar_mensaje(
             usuario_id,
             mensaje,
-            traza
+            traza,
+            peliculas
         )
 
         # Una línea JSON por turno en CloudWatch (serverless logs -f chat):
@@ -459,6 +500,7 @@ def lambda_handler(event, context):
             "body": json.dumps({
                 "usuario_id": usuario_id,
                 "respuesta": respuesta,
+                "peliculas": peliculas,
                 # Traza en la respuesta: solo con DEPURAR=1 en la Lambda y "depurar": true en el request
                 **({"traza": traza} if depuracion_activa(body) else {})
             }, ensure_ascii=False)
@@ -491,6 +533,7 @@ def lambda_handler(event, context):
                         "Estoy atendiendo muchas consultas en este momento. "
                         "Dame unos segundos y vuelve a enviar tu mensaje, por favor."
                     ),
+                    "peliculas": [],
                     "reintentar": True
                 }, ensure_ascii=False)
             }
