@@ -23,7 +23,7 @@ El usuario es la **Persona A**: datos, modelo de ML, herramientas del backend y 
 - El LLM no recomienda por su cuenta: solo títulos devueltos por la API de ML / herramientas.
 - Solo películas, un solo usuario (`userId` fijo), todo por chat.
 - **IDs de película:** en contratos, tablas y respuestas se usa solo el `id` propio del catálogo. Nunca exponer IDs de las fuentes (la traducción queda interna en las herramientas).
-- **AWS:** cuenta AWS Academy (Learner Lab). Los agentes **no tocan AWS**: el equipo despliega a mano desde la consola. Entregar código y artefactos listos para subir (zips, layers, guías paso a paso), usando `LabRole`, región us-east-1.
+- **AWS:** cuenta AWS Academy (Learner Lab). Los agentes **no tocan AWS**: el equipo despliega a mano desde la consola. Recursos creados una vez en la consola; el código se despliega con `despliegue/actualizar.sh` (git pull + empaquetado + AWS CLI) desde CloudShell o una EC2 de despliegue. Ver [docs/despliegue.md](docs/despliegue.md). `LabRole`, región us-east-1, Python 3.14.
 - Idioma de docs y UI: español.
 
 ## Git / GitHub

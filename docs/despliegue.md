@@ -1,68 +1,56 @@
-# Despliegue manual en AWS Academy (Learner Lab)
+# Despliegue en AWS Academy (Learner Lab)
 
-Todo se hace desde la consola, en **us-east-1**, con el rol **`LabRole`** (Learner Lab no deja crear roles).
-
-**Secretos (token de la API de metadatos y key de Groq):** van en las **variables de entorno de cada Lambda** (Configuration → Environment variables). Lambda las guarda cifradas. Learner Lab no da acceso a SSM Parameter Store; en producción irían ahí o en Secrets Manager. El código soporta ambas opciones: `*_PARAM` para SSM, o la variable directa. Nunca en el repo.
-
-**Runtime de todas las Lambdas: Python 3.14.** La consola ofrece 3.15, pero los binarios incluidos (numpy, pydantic-core) son para 3.14 y no cargan en otra versión.
+Región **us-east-1**, rol **`LabRole`** (Learner Lab no deja crear roles) y runtime **Python 3.14** en todas las Lambdas. La consola ofrece 3.15, pero los binarios (numpy, pydantic-core) están armados para 3.14 y no cargan en otra versión.
 
 Los agentes de IA no tocan AWS: esta guía es para el equipo.
 
-## `recomendar` (API del modelo de ML)
+## Cómo funciona
 
-### 0. Preparar los archivos (local)
-
-```bash
-uv sync
-.venv/bin/python -I ml/entrenar.py               # entrena y evalúa (~5 s) -> ml/artefactos/
-.venv/bin/python -I -m unittest discover -s tests # pruebas (deben pasar todas)
-tools/recomendar/empaquetar.sh                    # arma dist/
+```
+GitHub (repo) ──git pull──► CloudShell o EC2 de despliegue ──despliegue/actualizar.sh──► Lambdas, layer, S3 web
+Tu máquina (datos locales) ──modelo y catálogo──────────────────────────────────────────► S3 (utec-promptcorn-tools-datos)
 ```
 
-| Archivo en `dist/` | Va a |
-|---|---|
-| `modelo/vectores.npy`, `modelo/catalogo_ml.json`, `modelo/meta.json` | S3 |
-| `capa-numpy-python3.14.zip` (o `3.13`) | Layer de Lambda |
-| `promptcorn-tools-recomendar.zip` | Código de la Lambda |
+- **Una sola vez, en la consola:** se crean los recursos vacíos (buckets, tablas, Lambdas, APIs) y se cargan los secretos en las variables de entorno.
+- **En cada cambio:** en la máquina de despliegue se corre `despliegue/actualizar.sh`. El script hace `git pull`, empaqueta y actualiza las Lambdas. No se sube ningún zip a mano.
+- **El modelo y el catálogo** se suben desde tu máquina, porque los datos no están en el repo por la licencia. Casi nunca cambian.
+- **Los secretos** (token de la API de metadatos y key de Groq) van en las variables de entorno de cada Lambda, que Lambda guarda cifradas. Learner Lab no da acceso a SSM Parameter Store; en producción irían ahí o en Secrets Manager. El script nunca toca las variables de entorno.
+- **La configuración que no es secreta** (nombres de buckets y Lambdas, URL del chat) está en `despliegue/config.sh`.
 
-### 1. S3: artefactos del modelo
-Un solo bucket para los datos del backend: `modelo/` (este paso) y `catalogo/` (Lambda de herramientas).
-1. S3 → **Create bucket**.
-   - Nombre: `utec-promptcorn-tools-datos`. Los nombres de bucket son únicos en todo AWS.
-   - Región us-east-1.
-   - Deja activado **Block all public access**.
-2. Entra al bucket → **Create folder** `modelo`.
-3. Dentro de `modelo/` → **Upload** los 3 archivos de `dist/modelo/`.
+---
 
-### 2. DynamoDB: tablas
-DynamoDB → **Create table**, una vez por cada tabla, con **Table settings: Customize → Capacity mode: On-demand**:
+## Parte 1. Crear los recursos (una vez, en la consola)
 
-| Nombre | Partition key | Sort key |
+### 1.1 S3
+- **`utec-promptcorn-tools-datos`** (ya existe): **Block all public access** activado. Las carpetas `modelo/` y `catalogo/` se llenan en la parte 3.
+- **`utec-promptcorn-chat-web`** (frontend):
+  1. **Create bucket** y desmarca **Block all public access**.
+  2. **Properties → Static website hosting → Enable**, con index document `index.html`.
+  3. **Permissions → Bucket policy:**
+     ```json
+     {"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Principal": "*", "Action": "s3:GetObject",
+       "Resource": "arn:aws:s3:::utec-promptcorn-chat-web/*"}]}
+     ```
+
+### 1.2 DynamoDB (4 tablas, **Capacity mode: On-demand**)
+
+| Tabla | Partition key | Sort key |
 |---|---|---|
-| `promptcorn-tools-vistas` | `usuario_id` (String) | `pelicula_id` (Number) |
+| `promptcorn-tools-vistas` | `usuario_id` (String) | `pelicula_id` (**Number**) |
 | `promptcorn-tools-perfil` | `usuario_id` (String) | — |
 | `promptcorn-tools-recomendaciones` | `usuario_id` (String) | `sk` (String) |
+| `promptcorn-chat-conversaciones` | `usuario_id` (String) | `mensaje_id` (String) |
 
-### 3. Layer con numpy
-Lambda → **Layers** → **Create layer**:
-- Nombre `promptcorn-tools-numpy`.
-- Upload `dist/capa-numpy-python3.14.zip`. Si la consola no ofrece Python 3.14, usa el de `3.13`.
-- Compatible architectures: **x86_64**.
-- Compatible runtimes: la misma versión de Python.
+El tipo se elige en el desplegable al lado de cada key. Para verificarlo: Tables → `promptcorn-tools-vistas` → **Overview** debe decir `pelicula_id (Number)`. Si quedó como String, borra la tabla y créala de nuevo.
 
-### 4. Función Lambda
-1. Lambda → **Create function** → Author from scratch:
-   - Nombre `promptcorn-tools-recomendar`.
-   - Runtime **Python 3.14** (o 3.13, igual que la layer).
-   - Architecture **x86_64**.
-   - **Change default execution role → Use an existing role → `LabRole`**.
-2. **Code → Upload from → .zip file** → `dist/promptcorn-tools-recomendar.zip`.
-3. **Runtime settings → Edit → Handler:** `handler.lambda_handler`.
-4. **Layers → Add a layer → Custom layers** → `promptcorn-tools-numpy`, última versión.
-5. **Configuration → General configuration → Edit:** Memory **512 MB**, Timeout **15 s**.
-6. **Configuration → Environment variables:**
+### 1.3 Lambdas (vacías: el código lo sube el script)
+Lambda → **Create function → Author from scratch**, tres veces, todas con Runtime **Python 3.14**, Architecture **x86_64** y **Use an existing role → `LabRole`**. No subas código ni cambies el handler: el script fija handler, memoria y timeout.
 
-| Variable | Valor |
+Después, en **Configuration → Environment variables** de cada una:
+
+**`promptcorn-tools-recomendar`**
+
+| Key | Value |
 |---|---|
 | `BUCKET_ARTEFACTOS` | `utec-promptcorn-tools-datos` |
 | `PREFIJO_ARTEFACTOS` | `modelo/` |
@@ -71,150 +59,167 @@ Lambda → **Layers** → **Create layer**:
 | `TABLA_RECOMENDACIONES` | `promptcorn-tools-recomendaciones` |
 | `USUARIO_ID` | `usuario-demo` |
 
-### 5. Probar en la consola
-**Test** → crea un evento con el contenido de cada archivo de `tools/recomendar/eventos/`:
+**`promptcorn-tools-herramientas`**
 
-| Evento | Esperado |
-|---|---|
-| `01_basico.json` | `modo: arranque_en_frio` (las tablas están vacías) y un aviso de que no hay plataformas guardadas |
-| `02_con_filtros.json` | Comedias o animadas de ≤ 110 min, de 1995 en adelante |
-| `03_parecido_a_toy_story.json` | `modo: parecido`, con Toy Story 2 entre las primeras (en Disney+) |
-| `04_via_api_gateway.json` | `statusCode: 200` y el JSON dentro de `body` |
-| `05_error_genero.json` | `error` con la lista `generos_validos` |
-
-La primera invocación tarda ~1–2 s porque carga el modelo de S3. Las siguientes, milisegundos.
-
-**Para probar el modo perfil:** DynamoDB → `promptcorn-tools-vistas` → **Explore table items → Create item → JSON view** (desactiva "View DynamoDB JSON"):
-```json
-{"usuario_id": "usuario-demo", "pelicula_id": 8318, "estado": "visto", "calificacion": 5, "fecha": "2026-11-15T20:00:00Z"}
-```
-(8318 = Interestelar). Vuelve a correr `01_basico.json`: ahora `modo: perfil` y `motivo: Interestelar`. Cada prueba con `guardar` en `true` escribe en `promptcorn-tools-recomendaciones`, y esas películas no se repiten por 24 h. Para probar varias veces lo mismo, agrega `"guardar": false` o borra esos ítems.
-
-### 6. API Gateway
-1. API Gateway → **Create API → HTTP API → Build**.
-   - Integrations: **Lambda** → `promptcorn-tools-recomendar`.
-   - API name `promptcorn-tools-api`. Las demás herramientas se agregan como rutas de esta misma API.
-2. Route: **POST** `/recomendar` → la integración anterior.
-3. Stage `$default` con **Auto-deploy**.
-4. Copia la **Invoke URL** y prueba:
-```bash
-curl -s -X POST "<invoke-url>/recomendar" -H 'Content-Type: application/json' -d '{"cantidad": 2, "generos": ["Terror"]}'
-```
-Esa URL (+ `/recomendar`) es la que la Persona B pone en la variable de entorno del chat.
-
-### Reentrenar o actualizar
-- **Nuevo modelo:** corre `ml/entrenar.py` y `empaquetar.sh`, y vuelve a subir los 3 archivos a `modelo/`. Las instancias de Lambda que ya están corriendo guardan el modelo anterior en memoria. Para forzar la recarga, cambia cualquier variable de entorno (por ejemplo, agrega `VERSION_MODELO` con la fecha).
-- **Nuevo código:** corre `empaquetar.sh` y sube de nuevo `promptcorn-tools-recomendar.zip` (Code → Upload from).
-
-## Herramientas (`buscar_pelicula`, `ver_donde_ver`, `registrar_vista`, `guardar_plataformas`, `obtener_historial`)
-
-Una sola Lambda para las 5 herramientas. Usa las mismas tablas y el mismo bucket que `recomendar`. No necesita layer, porque solo usa la librería estándar y boto3, que ya viene en el runtime.
-
-### 0. Preparar (local)
-```bash
-tools/herramientas/empaquetar.sh   # -> dist/promptcorn-tools-herramientas.zip y dist/catalogo/
-```
-
-### 1. Catálogo en S3
-En el bucket `utec-promptcorn-tools-datos`: **Create folder** `catalogo` → **Upload** `catalogo.json` e `ids_externos.json` de `dist/catalogo/`.
-
-### 2. Función Lambda
-1. **Create function:**
-   - Nombre `promptcorn-tools-herramientas`.
-   - Runtime Python 3.14 (o 3.13).
-   - Arquitectura x86_64.
-   - Rol **`LabRole`**.
-2. **Upload from .zip** → `dist/promptcorn-tools-herramientas.zip`. Handler: `handler.lambda_handler`.
-3. **General configuration:** Memory **256 MB**, Timeout **15 s**.
-4. **Environment variables:**
-
-| Variable | Valor |
+| Key | Value |
 |---|---|
 | `BUCKET_CATALOGO` | `utec-promptcorn-tools-datos` |
 | `PREFIJO_CATALOGO` | `catalogo/` |
-| `TMDB_TOKEN` | El token de lectura (contenido de `~/.config/promptcorn/tmdb_token`) |
+| `TMDB_TOKEN` | El token. Cópialo sin mostrarlo con `pbcopy < ~/.config/promptcorn/tmdb_token` |
 | `TABLA_VISTAS` | `promptcorn-tools-vistas` |
 | `TABLA_PERFIL` | `promptcorn-tools-perfil` |
 | `TABLA_RECOMENDACIONES` | `promptcorn-tools-recomendaciones` |
-| `USUARIO_ID` | `usuario-demo` (el mismo que en `recomendar`) |
+| `USUARIO_ID` | `usuario-demo` |
 
-### 3. Probar en la consola
-**Test** con cada archivo de `tools/herramientas/eventos/`:
+**`promptcorn-chat`**
 
-| Evento | Esperado |
-|---|---|
-| `01_buscar.json` | Interestelar (`id` 8318, `en_catalogo: true`) primero |
-| `02_buscar_fuera_de_catalogo.json` | Oppenheimer con `id: null`, `en_catalogo: false` |
-| `03_donde_ver.json` | Plataformas de hoy y `avisos: []`. Si trae un aviso, la API externa no respondió: revisa la variable `TMDB_TOKEN` |
-| `04_guardar_plataformas.json` | `["Netflix", "Prime Video", "HBO Max"]` |
-| `05_registrar_vista.json` | `ok: true`, nota 5. Después, `recomendar` pasa a `modo: perfil` |
-| `06_historial.json` | La vista registrada y lo que haya recomendado `recomendar` |
-| `07_via_api_gateway.json` | `statusCode: 200` (Toy Story como `no_me_interesa`) |
-
-### 4. Rutas en la API
-En `promptcorn-tools-api` → **Routes → Create**: **POST** `/{herramienta}` → integración Lambda `promptcorn-tools-herramientas`. Con una sola ruta alcanzan las 5 herramientas. `POST /recomendar` es más específica y sigue yendo a su Lambda.
-
-```bash
-curl -s -X POST "<invoke-url>/buscar_pelicula" -H 'Content-Type: application/json' -d '{"titulo": "Interstellar"}'
-```
-
-### Notas de Learner Lab
-- Los recursos persisten entre sesiones, pero solo responden mientras el lab está iniciado.
-- Si algo responde `AccessDenied`, revisa que la función use `LabRole`.
-- Las Lambdas sin VPC tienen salida a internet: `buscar_pelicula` y `ver_donde_ver` consultan la API externa directamente.
-
-## Chat (Persona B)
-
-### 0. Preparar (local)
-```bash
-chat/empaquetar.sh        # -> dist/promptcorn-chat-python3.14.zip (y 3.13)
-```
-
-### 1. Tabla de memoria
-DynamoDB → **Create table** con nombre `promptcorn-chat-conversaciones`, partition key `usuario_id` (String), sort key `mensaje_id` (String) y capacidad On-demand.
-
-### 2. Función Lambda
-1. **Create function:**
-   - Nombre `promptcorn-chat`.
-   - Runtime Python 3.14 (o 3.13, igual que el zip).
-   - Arquitectura x86_64.
-   - Rol **`LabRole`**.
-2. **Upload from .zip** → `dist/promptcorn-chat-python3.14.zip`.
-   - Handler: `lambda_function.lambda_handler`. Es el valor por defecto.
-3. **General configuration:** Memory 256 MB, Timeout **29 s**. API Gateway corta a los 30 s.
-4. **Environment variables:**
-
-| Variable | Valor |
+| Key | Value |
 |---|---|
 | `CONVERSATIONS_TABLE` | `promptcorn-chat-conversaciones` |
 | `GROQ_API_KEY` | La key de Groq |
-| `GROQ_MODEL` | `openai/gpt-oss-20b` (o el que se elija) |
-| `MOCK_MODE` | `false` (`true` = herramientas simuladas, sin backend) |
-| `API_TOOLS_URL` | Invoke URL de `promptcorn-tools-api`, sin `/` al final |
+| `GROQ_MODEL` | `openai/gpt-oss-20b` |
+| `MOCK_MODE` | `false` |
+| `API_TOOLS_URL` | Invoke URL de `promptcorn-tools-api` (paso 1.4), sin `/` al final |
 
-5. **Test** con el evento:
-```json
-{"body": "{\"usuario_id\": \"prueba\", \"mensaje\": \"Recomiéndame una comedia corta\"}"}
-```
+### 1.4 API Gateway (2 HTTP APIs)
+1. **`promptcorn-tools-api`:** Create API → HTTP API → Build.
+   - Integrations: Lambda `promptcorn-tools-recomendar` y Lambda `promptcorn-tools-herramientas`.
+   - Routes:
+     - `POST /recomendar` → recomendar.
+     - `POST /{herramienta}` → herramientas. Una sola ruta cubre las 5 herramientas.
+   - Stage `$default` con auto-deploy.
+   - Copia la Invoke URL en `API_TOOLS_URL` de `promptcorn-chat`.
+2. **`promptcorn-chat-api`:**
+   - Integration: Lambda `promptcorn-chat`.
+   - Route: `POST /chat`.
+   - Stage `$default` con auto-deploy.
+   - **CORS:** origin `*`, methods `POST, OPTIONS`, headers `content-type`.
+   - Pon la Invoke URL + `/chat` en `CHAT_API_URL` de `despliegue/config.sh`, y haz commit y push. Esta URL es pública; no es un secreto.
 
-### 3. API del chat
-API Gateway → **Create API → HTTP API**:
-- Integración Lambda `promptcorn-chat`.
-- Nombre `promptcorn-chat-api`.
-- Ruta **POST** `/chat`.
-- Stage `$default` con auto-deploy.
-- **CORS:** Allow origin `*`, Allow methods `POST, OPTIONS`, Allow headers `content-type`.
+---
 
-La URL `<invoke-url>/chat` es la que va en `VITE_API_URL` del frontend.
+## Parte 2. Preparar la máquina de despliegue (una vez)
 
-## Frontend (Persona B)
+### Opción A: AWS CloudShell (recomendada)
+1. En la consola, ícono **`>_`** (barra superior), en us-east-1.
+2. Clona el repo:
+   ```bash
+   git clone https://github.com/shadow-maker/PromptCorn.git
+   ```
+El home de CloudShell persiste entre sesiones: el repo queda clonado para la próxima vez.
+
+### Opción B: EC2 (si CloudShell no está disponible)
+1. EC2 → **Launch instance:**
+   - Nombre `promptcorn-despliegue`.
+   - **Amazon Linux 2023**, tipo **t3.micro**.
+   - Key pair `vockey`, o ninguno si te conectas con EC2 Instance Connect.
+   - En **Advanced details → IAM instance profile** elige **`LabInstanceProfile`**. Así la instancia tiene las credenciales del lab sin copiar llaves.
+2. **Connect → EC2 Instance Connect**, y luego:
+   ```bash
+   sudo dnf install -y git zip python3-pip
+   git clone https://github.com/shadow-maker/PromptCorn.git
+   ```
+3. **Detén la instancia (Stop) cuando no estés desplegando,** para no gastar créditos del lab.
+
+Esta EC2 solo se usa para desplegar. La app sigue siendo 100 % serverless, así que no va en el diagrama de arquitectura.
+
+### Node (solo para desplegar el frontend)
+Vite necesita Node 20.19 o superior. Comprueba con `node -v`. Si falta o es más viejo:
 ```bash
-cd frontend && npm install
-echo "VITE_API_URL=<invoke-url>/chat" > .env
-npm run build             # -> frontend/dist/
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash && source ~/.bashrc && nvm install 22
 ```
-1. S3 → **Create bucket** `promptcorn-chat-web-<sufijo>`. Desactiva **Block all public access** y acepta la advertencia.
-2. **Properties → Static website hosting → Enable**, con index document `index.html`.
-3. **Permissions → Bucket policy:** lectura pública de `arn:aws:s3:::promptcorn-chat-web-<sufijo>/*` (`s3:GetObject`, Principal `*`).
-4. **Upload:** el *contenido* de `frontend/dist/`, no la carpeta.
-5. La URL del sitio aparece en Static website hosting. CloudFront delante es opcional: da HTTPS y suma al diagrama.
+
+---
+
+## Parte 3. Modelo y catálogo a S3 (desde tu máquina)
+Los datos no están en el repo, así que esto sale de tu máquina:
+```bash
+.venv/bin/python -I ml/entrenar.py            # -> ml/artefactos/
+tools/recomendar/empaquetar.sh                # -> dist/modelo/
+tools/herramientas/empaquetar.sh              # -> dist/catalogo/
+```
+En la consola, bucket `utec-promptcorn-tools-datos`:
+- **Create folder** `modelo` → **Upload** los 3 archivos de `dist/modelo/`.
+- **Create folder** `catalogo` → **Upload** los 2 archivos de `dist/catalogo/`.
+
+Deben quedar en `modelo/vectores.npy` y `catalogo/catalogo.json`, no en una subcarpeta extra.
+
+Alternativa: si configuras en tu máquina la AWS CLI con las credenciales del lab (Learner Lab → **AWS Details → AWS CLI → Show**, copiadas en `~/.aws/credentials`; vencen con la sesión), puedes usar `despliegue/actualizar.sh modelo catalogo`.
+
+---
+
+## Parte 4. Desplegar el código
+
+En la máquina de despliegue:
+```bash
+cd PromptCorn
+despliegue/actualizar.sh todo     # la primera vez: layer de numpy + 3 Lambdas + frontend
+```
+**Después de cada cambio en el repo:**
+```bash
+cd PromptCorn
+despliegue/actualizar.sh          # git pull + las 3 Lambdas (~1 min)
+despliegue/actualizar.sh chat     # o solo lo que cambió: recomendar, herramientas, chat, frontend
+```
+
+| Componente | Qué hace |
+|---|---|
+| `recomendar`, `herramientas`, `chat` | Empaqueta la carpeta, sube el código y fija runtime, handler, memoria y timeout |
+| `frontend` | Compila con `CHAT_API_URL` y sincroniza `utec-promptcorn-chat-web` |
+| `capa` | Publica una versión nueva de la layer de numpy y la conecta a `recomendar`. Solo hace falta la primera vez |
+| `modelo`, `catalogo` | Suben los datos a S3. Solo funcionan donde están los datos (tu máquina) |
+| `todo` | Todo lo anterior que se pueda en esa máquina |
+
+`DRY_RUN=1 despliegue/actualizar.sh todo` muestra los comandos sin ejecutarlos.
+
+---
+
+## Parte 5. Probar
+
+**En la consola de cada Lambda (Test),** con los eventos del repo:
+
+| Lambda | Evento | Esperado |
+|---|---|---|
+| recomendar | `tools/recomendar/eventos/01_basico.json` | `modo: arranque_en_frio` y un aviso de que no hay plataformas guardadas |
+| herramientas | `tools/herramientas/eventos/01_buscar.json` | Interestelar (`id` 8318) primero |
+| herramientas | `03_donde_ver.json` | `avisos: []`. Si trae un aviso, revisa `TMDB_TOKEN` |
+| herramientas | `04_guardar_plataformas.json` y `05_registrar_vista.json` | `ok: true` |
+| recomendar | `01_basico.json` otra vez | Ahora `modo: perfil`, motivo "Interestelar", solo en Netflix, Prime Video o HBO Max |
+| chat | `{"body": "{\"usuario_id\": \"prueba\", \"mensaje\": \"Recomiéndame una comedia corta\"}"}` | `statusCode: 200` con películas del catálogo |
+
+**Por HTTP:**
+```bash
+API=<invoke-url de promptcorn-tools-api>
+curl -s -X POST $API/recomendar -H 'Content-Type: application/json' -d '{"cantidad": 2, "guardar": false}'
+curl -s -X POST $API/buscar_pelicula -H 'Content-Type: application/json' -d '{"titulo": "Matrix"}'
+curl -s -X POST <invoke-url de promptcorn-chat-api>/chat -H 'Content-Type: application/json' -d '{"usuario_id":"prueba","mensaje":"hola"}'
+```
+
+**En el navegador** (URL de Static website hosting de `utec-promptcorn-chat-web`), escribe esta conversación en orden:
+1. "Tengo Netflix, Prime y HBO"
+2. "Vi Interstellar y me encantó, le pongo 5"
+3. "Recomiéndame algo" → debe salir el motivo "Interestelar"
+4. "Dame otras opciones"
+5. "Algo parecido a Toy Story"
+6. "¿Dónde puedo ver Matrix?"
+7. "¿Y Oppenheimer?" → debe explicar que no está en el catálogo
+8. "¿Qué me recomendaste hoy?"
+
+---
+
+## Si algo falla
+| Síntoma | Causa probable |
+|---|---|
+| `AccessDenied` (Lambda) | La función no usa `LabRole` |
+| `AccessDenied` (script en EC2) | La instancia no tiene `LabInstanceProfile`: **Actions → Security → Modify IAM role** |
+| `ResourceNotFoundException` (script) | El nombre de la Lambda o del bucket no coincide con `despliegue/config.sh` |
+| `Runtime.ImportModuleError` | La Lambda no está en Python 3.14, o falta la layer (corre `actualizar.sh capa`) |
+| Error 500 | Lambda → **Monitor → View CloudWatch logs**. La línea `ERROR ...` dice qué pasó |
+| `NoSuchKey` en los logs | Faltan archivos en `modelo/` o `catalogo/` del bucket |
+| `recomendar` siempre en `arranque_en_frio` | `pelicula_id` quedó como String, o `USUARIO_ID` es distinto entre las Lambdas |
+| `ver_donde_ver` siempre con aviso | Falta `TMDB_TOKEN` o está mal copiado |
+| El chat tarda más de 30 s o da 503 | Groq lento: revisa los logs de `promptcorn-chat` |
+| El navegador muestra un error de CORS | Falta la configuración de CORS en `promptcorn-chat-api` |
+| `npm` falla al desplegar el frontend | Node viejo: ver "Node" en la parte 2 |
+| La primera llamada es lenta (1–3 s) | Es normal: carga el modelo y el catálogo |
+| Nada responde | La sesión del lab expiró. **Start Lab** de nuevo; los recursos se conservan |

@@ -37,6 +37,7 @@ tools/herramientas/ Lambda de las otras 5 herramientas (buscar, dónde ver, regi
 chat/             Lambda del chat con Groq (Persona B)
 frontend/         chat web (Persona B)
 tests/            pruebas (python -m unittest discover -s tests)
+despliegue/       actualizar.sh (git pull + deploy a AWS) y config.sh
 data/, dist/      (no versionados) datos y paquetes para AWS
 ```
 
