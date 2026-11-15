@@ -25,7 +25,7 @@ Dos integrantes, división por capas. **El único punto de contacto son los cont
 - **Contratos primero.** B desarrolla contra simulaciones que devuelven un JSON fijo; A construye las versiones reales; se cambian las URLs por variables de entorno.
 - **Propiedad de carpetas.** A es dueño de `/ml`, `/tools` y `/scripts`; B de `/chat` y `/frontend`. Cada uno en su rama, integración por pull request, sin editar lo del otro.
 - **Una sola cuenta AWS con prefijos:** `promptcorn-tools-...` (A) y `promptcorn-chat-...` (B).
-- **Secretos** (Groq, TMDB) en SSM Parameter Store. Nada de llaves ni datos en el repo (es público).
+- **Secretos** (Groq, TMDB) en las variables de entorno de cada Lambda (Learner Lab no da acceso a SSM). Nada de llaves ni datos en el repo (es público).
 - **Sincronización** de 15 minutos al mediodía y en la noche: qué está listo y qué falta.
 
 ## Plan por días (referencial)

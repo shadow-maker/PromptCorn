@@ -18,7 +18,7 @@ El usuario es la **Persona A**: datos, modelo de ML, herramientas del backend y 
 - Las preguntas del usuario ("¿por qué X?", "¿no sería mejor Y?") **no son necesariamente pedidos de cambio**. Responde con el razonamiento, defiende la decisión si sigue siendo la mejor y cambia solo si el argumento lo justifica. Debatir está bien; ceder por reflejo no.
 
 ## Reglas
-- **El repo es público.** Nunca subir llaves (Groq, TMDB, AWS), `.env`, ni datos crudos o enriquecidos (`data/` está en `.gitignore`). Las llaves van en SSM Parameter Store.
+- **El repo es público.** Nunca subir llaves (Groq, TMDB, AWS), `.env`, ni datos crudos o enriquecidos (`data/` está en `.gitignore`). Las llaves van en las variables de entorno de cada Lambda (Learner Lab no da acceso a SSM).
 - No subir CSV de MovieLens ni respuestas de TMDB: se regeneran con los scripts.
 - El LLM no recomienda por su cuenta: solo títulos devueltos por la API de ML / herramientas.
 - Solo películas, un solo usuario (`userId` fijo), todo por chat.

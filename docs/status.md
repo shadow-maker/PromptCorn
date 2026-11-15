@@ -46,14 +46,14 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - [x] Esquema de las tablas `Vistas`, `Perfil`, `Recomendaciones` ([contratos.md](contratos.md)).
 - [x] Lambda `promptcorn-tools-herramientas` (`tools/herramientas/`): `buscar_pelicula` (en vivo, tolera tipeo, `en_catalogo`), `ver_donde_ver` (en vivo con respaldo al snapshot), `registrar_vista`, `guardar_plataformas` (normaliza nombres), `obtener_historial`. Incluye 20 pruebas, eventos y `empaquetar.sh`.
 - [x] Catálogo completo para S3 (`scripts/exportar_catalogo.py`, 6.1 MB) en lugar de una tabla `Peliculas`.
-- [ ] (A+B) Desplegar: catálogo en S3, token en SSM, Lambda y ruta `POST /{herramienta}` ([despliegue.md](despliegue.md#herramientas-buscar_pelicula-ver_donde_ver-registrar_vista-guardar_plataformas-obtener_historial)).
+- [ ] (A+B) Desplegar: catálogo en S3, token en variable de entorno, Lambda y ruta `POST /{herramienta}` ([despliegue.md](despliegue.md#herramientas-buscar_pelicula-ver_donde_ver-registrar_vista-guardar_plataformas-obtener_historial)).
 - [ ] Probar el flujo completo con el chat real: `MOCK_MODE=false` y `API_TOOLS_URL`.
 - [ ] Colección de Postman con evidencia de cada herramienta.
 
 ## Etapa 3: Lambda del chat (B)
 - [x] Prompt del sistema, tool calling con Groq (hasta 5 vueltas), memoria en `Conversaciones`, errores de herramientas devueltos al LLM.
 - [x] Simulaciones con el formato del contrato (`MOCK_MODE=true`); modo real con una sola URL base (`API_TOOLS_URL`).
-- [x] Integrado a `main` y alineado al contrato (definiciones de herramientas, prompt, key de Groq desde SSM).
+- [x] Integrado a `main` y alineado al contrato (definiciones de herramientas, prompt, key de Groq desde variable de entorno o SSM).
 - [ ] Desplegar la Lambda del chat y su API ([despliegue.md](despliegue.md#chat-persona-b)).
 - [ ] Probar con Groq real (modelo por defecto `openai/gpt-oss-20b`).
 
@@ -91,4 +91,5 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - Películas fuera del catálogo: `buscar_pelicula` las devuelve con `id: null` y `en_catalogo: false`; no se agregan.
 - Las 5 herramientas de datos van en una sola Lambda (`POST /{herramienta}`) y `recomendar` va aparte, porque usa numpy y el modelo.
 - El catálogo completo va en S3 como JSON en memoria; no hay tabla `Peliculas`. Las bases de datos del enunciado son las 4 tablas DynamoDB.
-- Un solo bucket `promptcorn-tools-datos-<sufijo>`, con los prefijos `modelo/` y `catalogo/`.
+- Un solo bucket `utec-promptcorn-tools-datos`, con los prefijos `modelo/` y `catalogo/`.
+- Secretos en las variables de entorno de las Lambdas: Learner Lab no da acceso a SSM. Para el informe: en producción irían en SSM o Secrets Manager. Se descartó EC2 porque rompe el requisito serverless.

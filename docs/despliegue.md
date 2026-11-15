@@ -1,6 +1,12 @@
 # Despliegue manual en AWS Academy (Learner Lab)
 
-Todo se hace desde la consola, en **us-east-1**, con el rol **`LabRole`** (Learner Lab no deja crear roles). Runtime de todas las Lambdas: **Python 3.14**. La consola ofrece 3.15, pero los binarios incluidos (numpy, pydantic-core) son para 3.14 y no cargan en otra versión. Los agentes de IA no tocan AWS: esta guía es para el equipo.
+Todo se hace desde la consola, en **us-east-1**, con el rol **`LabRole`** (Learner Lab no deja crear roles).
+
+**Secretos (token de la API de metadatos y key de Groq):** van en las **variables de entorno de cada Lambda** (Configuration → Environment variables). Lambda las guarda cifradas. Learner Lab no da acceso a SSM Parameter Store; en producción irían ahí o en Secrets Manager. El código soporta ambas opciones: `*_PARAM` para SSM, o la variable directa. Nunca en el repo.
+
+**Runtime de todas las Lambdas: Python 3.14.** La consola ofrece 3.15, pero los binarios incluidos (numpy, pydantic-core) son para 3.14 y no cargan en otra versión.
+
+Los agentes de IA no tocan AWS: esta guía es para el equipo.
 
 ## `recomendar` (API del modelo de ML)
 
@@ -22,7 +28,7 @@ tools/recomendar/empaquetar.sh                    # arma dist/
 ### 1. S3: artefactos del modelo
 Un solo bucket para los datos del backend: `modelo/` (este paso) y `catalogo/` (Lambda de herramientas).
 1. S3 → **Create bucket**.
-   - Nombre: `promptcorn-tools-datos-<sufijo>`. Los nombres de bucket son únicos en todo AWS; usa por ejemplo tus iniciales y un número.
+   - Nombre: `utec-promptcorn-tools-datos`. Los nombres de bucket son únicos en todo AWS.
    - Región us-east-1.
    - Deja activado **Block all public access**.
 2. Entra al bucket → **Create folder** `modelo`.
@@ -58,7 +64,7 @@ Lambda → **Layers** → **Create layer**:
 
 | Variable | Valor |
 |---|---|
-| `BUCKET_ARTEFACTOS` | `promptcorn-tools-datos-<sufijo>` |
+| `BUCKET_ARTEFACTOS` | `utec-promptcorn-tools-datos` |
 | `PREFIJO_ARTEFACTOS` | `modelo/` |
 | `TABLA_VISTAS` | `promptcorn-tools-vistas` |
 | `TABLA_PERFIL` | `promptcorn-tools-perfil` |
@@ -110,17 +116,9 @@ tools/herramientas/empaquetar.sh   # -> dist/promptcorn-tools-herramientas.zip y
 ```
 
 ### 1. Catálogo en S3
-En el bucket `promptcorn-tools-datos-<sufijo>`: **Create folder** `catalogo` → **Upload** `catalogo.json` e `ids_externos.json` de `dist/catalogo/`.
+En el bucket `utec-promptcorn-tools-datos`: **Create folder** `catalogo` → **Upload** `catalogo.json` e `ids_externos.json` de `dist/catalogo/`.
 
-### 2. Token de la API de metadatos en SSM
-Systems Manager → **Parameter Store → Create parameter**:
-- Nombre `/promptcorn/tmdb_token`.
-- Tipo **SecureString**.
-- Valor: el token de lectura (el mismo que se usó para descargar los datos).
-
-Si SSM no está disponible en Learner Lab, usa la variable `TMDB_TOKEN` de la Lambda. Nunca en el repo.
-
-### 3. Función Lambda
+### 2. Función Lambda
 1. **Create function:**
    - Nombre `promptcorn-tools-herramientas`.
    - Runtime Python 3.14 (o 3.13).
@@ -132,28 +130,28 @@ Si SSM no está disponible en Learner Lab, usa la variable `TMDB_TOKEN` de la La
 
 | Variable | Valor |
 |---|---|
-| `BUCKET_CATALOGO` | `promptcorn-tools-datos-<sufijo>` |
+| `BUCKET_CATALOGO` | `utec-promptcorn-tools-datos` |
 | `PREFIJO_CATALOGO` | `catalogo/` |
-| `TMDB_TOKEN_PARAM` | `/promptcorn/tmdb_token` |
+| `TMDB_TOKEN` | El token de lectura (contenido de `~/.config/promptcorn/tmdb_token`) |
 | `TABLA_VISTAS` | `promptcorn-tools-vistas` |
 | `TABLA_PERFIL` | `promptcorn-tools-perfil` |
 | `TABLA_RECOMENDACIONES` | `promptcorn-tools-recomendaciones` |
 | `USUARIO_ID` | `usuario-demo` (el mismo que en `recomendar`) |
 
-### 4. Probar en la consola
+### 3. Probar en la consola
 **Test** con cada archivo de `tools/herramientas/eventos/`:
 
 | Evento | Esperado |
 |---|---|
 | `01_buscar.json` | Interestelar (`id` 8318, `en_catalogo: true`) primero |
 | `02_buscar_fuera_de_catalogo.json` | Oppenheimer con `id: null`, `en_catalogo: false` |
-| `03_donde_ver.json` | Plataformas de hoy y `avisos: []`. Si trae un aviso, la API externa no respondió: revisa el token o SSM |
+| `03_donde_ver.json` | Plataformas de hoy y `avisos: []`. Si trae un aviso, la API externa no respondió: revisa la variable `TMDB_TOKEN` |
 | `04_guardar_plataformas.json` | `["Netflix", "Prime Video", "HBO Max"]` |
 | `05_registrar_vista.json` | `ok: true`, nota 5. Después, `recomendar` pasa a `modo: perfil` |
 | `06_historial.json` | La vista registrada y lo que haya recomendado `recomendar` |
 | `07_via_api_gateway.json` | `statusCode: 200` (Toy Story como `no_me_interesa`) |
 
-### 5. Rutas en la API
+### 4. Rutas en la API
 En `promptcorn-tools-api` → **Routes → Create**: **POST** `/{herramienta}` → integración Lambda `promptcorn-tools-herramientas`. Con una sola ruta alcanzan las 5 herramientas. `POST /recomendar` es más específica y sigue yendo a su Lambda.
 
 ```bash
@@ -172,18 +170,10 @@ curl -s -X POST "<invoke-url>/buscar_pelicula" -H 'Content-Type: application/jso
 chat/empaquetar.sh        # -> dist/promptcorn-chat-python3.14.zip (y 3.13)
 ```
 
-### 1. Key de Groq en SSM
-Systems Manager → **Parameter Store → Create parameter**:
-- Nombre `/promptcorn/groq_api_key`.
-- Tipo **SecureString**.
-- Valor: la key de Groq.
-
-Si Learner Lab no deja usar SSM, se puede poner la key directo en la variable `GROQ_API_KEY` de la Lambda. Nunca en el repo.
-
-### 2. Tabla de memoria
+### 1. Tabla de memoria
 DynamoDB → **Create table** con nombre `promptcorn-chat-conversaciones`, partition key `user_id` (String), sort key `message_id` (String) y capacidad On-demand.
 
-### 3. Función Lambda
+### 2. Función Lambda
 1. **Create function:**
    - Nombre `promptcorn-chat`.
    - Runtime Python 3.14 (o 3.13, igual que el zip).
@@ -197,7 +187,7 @@ DynamoDB → **Create table** con nombre `promptcorn-chat-conversaciones`, parti
 | Variable | Valor |
 |---|---|
 | `CONVERSATIONS_TABLE` | `promptcorn-chat-conversaciones` |
-| `GROQ_API_KEY_PARAM` | `/promptcorn/groq_api_key` |
+| `GROQ_API_KEY` | La key de Groq |
 | `GROQ_MODEL` | `openai/gpt-oss-20b` (o el que se elija) |
 | `MOCK_MODE` | `false` (`true` = herramientas simuladas, sin backend) |
 | `API_TOOLS_URL` | Invoke URL de `promptcorn-tools-api`, sin `/` al final |
@@ -207,7 +197,7 @@ DynamoDB → **Create table** con nombre `promptcorn-chat-conversaciones`, parti
 {"body": "{\"user_id\": \"prueba\", \"message\": \"Recomiéndame una comedia corta\"}"}
 ```
 
-### 4. API del chat
+### 3. API del chat
 API Gateway → **Create API → HTTP API**:
 - Integración Lambda `promptcorn-chat`.
 - Nombre `promptcorn-chat-api`.
