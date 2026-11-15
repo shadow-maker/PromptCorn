@@ -1,5 +1,6 @@
 
 import json
+import time
 import traceback
 
 from groq_client import consultar_groq
@@ -56,6 +57,8 @@ TOOLS = [
                             "description": "Solo si pide otras distintas a las suyas; [] = cualquiera."},
             "parecido_a": {"type": "integer",
                            "description": "id de una película para recomendar parecidas."},
+            "orden": {"type": "string", "enum": ["relevancia", "reciente"],
+                      "description": "reciente = las más nuevas entre las afines."},
             "excluir": {"type": "array", "items": {"type": "integer"}}
         }
     ),
@@ -126,7 +129,13 @@ def para_llm(valor):
 # PROCESAMIENTO DEL MENSAJE CONVERSACIONAL
 # ============================================================
 
-def procesar_mensaje(usuario_id, mensaje):
+def procesar_mensaje(usuario_id, mensaje, traza=None):
+    """
+    traza: lista opcional donde se anota cada paso (llamadas a Groq y
+    herramientas con argumentos y resultado) para depurar.
+    """
+    if traza is None:
+        traza = []
 
     # Recuperar el historial de conversación del usuario.
     historial = obtener_conversacion(usuario_id)
@@ -163,6 +172,14 @@ def procesar_mensaje(usuario_id, mensaje):
             messages,
             tools=TOOLS
         )
+
+        traza.append({
+            "paso": "groq",
+            "vuelta": intento + 1,
+            "pide_herramientas": [
+                llamada.function.name for llamada in (respuesta.tool_calls or [])
+            ]
+        })
 
         # Si Groq no solicita herramientas, devolver respuesta.
         if not respuesta.tool_calls:
@@ -235,6 +252,13 @@ def procesar_mensaje(usuario_id, mensaje):
                     ),
                     "detalle": str(error)
                 }, ensure_ascii=False)
+
+            traza.append({
+                "paso": "herramienta",
+                "nombre": nombre_herramienta,
+                "argumentos": argumentos_json,
+                "resultado": contenido_resultado[:1500]
+            })
 
             # Devolver el resultado de la herramienta a Groq.
             messages.append({
@@ -335,11 +359,25 @@ def lambda_handler(event, context):
         usuario_id = usuario_id.strip()
         mensaje = mensaje.strip()
 
-        # Procesar la conversación.
+        # Procesar la conversación (con traza para depurar).
+        inicio = time.time()
+        traza = []
         respuesta = procesar_mensaje(
             usuario_id,
-            mensaje
+            mensaje,
+            traza
         )
+
+        # Una línea JSON por turno en CloudWatch (serverless logs -f chat):
+        # mensaje, herramientas usadas con argumentos y resultado, y duración.
+        print(json.dumps({
+            "tipo": "turno",
+            "usuario_id": usuario_id,
+            "mensaje": mensaje,
+            "respuesta": respuesta[:2000],
+            "traza": traza,
+            "duracion_ms": int((time.time() - inicio) * 1000)
+        }, ensure_ascii=False))
 
         # Respuesta exitosa.
         return {
@@ -347,7 +385,9 @@ def lambda_handler(event, context):
             "headers": headers,
             "body": json.dumps({
                 "usuario_id": usuario_id,
-                "respuesta": respuesta
+                "respuesta": respuesta,
+                # "depurar": true en el request devuelve la traza (pruebas sin acceso a CloudWatch)
+                **({"traza": traza} if body.get("depurar") else {})
             }, ensure_ascii=False)
         }
 

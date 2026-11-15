@@ -15,6 +15,7 @@ import numpy as np
 NOTA_NEUTRA = 3.0          # un 3 no aporta; un 5 suma +2; un 1 resta -2
 PESO_NO_ME_INTERESA = -1.0  # "no me interesa" resta como una nota de 2
 PESO_PARECIDO = 0.8         # peso de la afinidad en el modo "parecida a X"
+POOL_RECIENTES = 30        # orden "reciente": se ordena por año entre las 30 más afines
 CAMPOS_EXTRA = ("generos", "duracion_min", "sinopsis", "poster")  # se copian a la respuesta si existen
 
 
@@ -108,12 +109,14 @@ class Recomendador:
     # ---------- API ----------
 
     def recomendar(self, notas: dict[int, float] | None = None, descartadas=(), excluir=(), n: int = 3,
-                   parecido_a: int | None = None, **filtros) -> list[dict]:
+                   parecido_a: int | None = None, orden: str = "relevancia", **filtros) -> list[dict]:
         """Top-n del catálogo que pasa los filtros, con el motivo de cada recomendación.
 
         notas: {id: calificación 0.5..5} de lo que el usuario vio y calificó.
         descartadas: ids marcados "no me interesa" (se excluyen y restan en el perfil).
         excluir: ids que no deben salir (vistas sin nota, recomendadas hace poco...).
+        orden: "relevancia" (puntaje) o "reciente": de las POOL_RECIENTES mejor puntuadas, las de estreno
+               más reciente primero (así "lo más reciente" sigue siendo algo afín, no cualquier estreno).
         filtros: generos, duracion_max, anio_min, anio_max, plataformas, solo_disponibles.
         """
         notas = notas or {}
@@ -128,8 +131,11 @@ class Recomendador:
         candidatas = np.flatnonzero(ok)
         if candidatas.size == 0:
             return []
-        top = candidatas[np.argsort(-total[candidatas], kind="stable")[:n]]
-        return [self._resultado(j, pesos, afinidad, notas) for j in top]
+        top = candidatas[np.argsort(-total[candidatas], kind="stable")]
+        if orden == "reciente":
+            pool = top[:max(POOL_RECIENTES, n)]
+            top = pool[np.argsort(-self.anio[pool], kind="stable")]
+        return [self._resultado(j, pesos, afinidad, notas) for j in top[:n]]
 
     def _resultado(self, j: int, pesos: dict[int, float], afinidad, notas) -> dict:
         p = self.catalogo[j]

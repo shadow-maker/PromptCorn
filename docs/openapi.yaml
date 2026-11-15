@@ -45,10 +45,12 @@ paths:
               properties:
                 usuario_id: { type: string, description: Identifica la conversación (el frontend usa un id por navegador) }
                 mensaje: { type: string }
+                depurar: { type: boolean, default: false, description: "true devuelve la traza (llamadas a Groq y herramientas con argumentos y resultado)" }
             examples:
               comedia: { summary: Recomendación con filtros, value: { usuario_id: prueba-swagger, mensaje: Recomiéndame una comedia corta } }
               donde_ver: { summary: Disponibilidad, value: { usuario_id: prueba-swagger, mensaje: ¿Dónde puedo ver Matrix? } }
               registrar: { summary: Registrar con nota, value: { usuario_id: prueba-swagger, mensaje: "Vi Interstellar y me encantó, le pongo 5" } }
+              depurar: { summary: Con traza de herramientas, value: { usuario_id: prueba-swagger, mensaje: Recomiéndame algo de acción reciente, depurar: true } }
       responses:
         "200":
           description: Respuesta del bot (Markdown simple)
@@ -60,6 +62,7 @@ paths:
                   usuario_id: { type: string }
                   respuesta: { type: string }
                   reintentar: { type: boolean, description: "true si se alcanzó el límite de uso de Groq: reenviar en unos segundos" }
+                  traza: { type: array, items: { type: object }, description: "Solo con depurar: true" }
               example:
                 usuario_id: prueba-swagger
                 respuesta: "¡Claro! **Matrix** (1999) está disponible hoy en Perú en:\n\n- **HBO Max**\n- **Claro Video**"
@@ -86,6 +89,7 @@ paths:
               basico: { summary: Básico (sin guardar), value: { cantidad: 3, guardar: false } }
               filtros: { summary: Comedias cortas desde 1995, value: { cantidad: 3, generos: [Comedia, Animación], duracion_max: 110, anio_min: 1995, guardar: false } }
               parecido: { summary: Parecidas a Toy Story (id 1) en Disney+, value: { cantidad: 3, parecido_a: 1, plataformas: [Disney+], guardar: false } }
+              reciente: { summary: Lo más reciente parecido a Iron Man (id 6715), value: { cantidad: 3, parecido_a: 6715, orden: reciente, guardar: false } }
               error: { summary: Género inválido (400), value: { generos: [Anime] } }
       responses:
         "200":
@@ -322,6 +326,7 @@ components:
           items: { type: string }
           description: Reemplaza las del perfil solo en esta consulta; [] = cualquier plataforma de Perú
         parecido_a: { type: integer, description: id de una película (modo "parecidas a X") }
+        orden: { type: string, enum: [relevancia, reciente], default: relevancia, description: "reciente = de las 30 más afines, las de estreno más nuevo primero" }
         excluir: { type: array, items: { type: integer } }
         guardar: { type: boolean, default: true, description: false para probar sin escribir en Recomendaciones }
     RecomendarResponse:

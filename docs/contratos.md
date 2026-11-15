@@ -30,6 +30,7 @@ Todo cuelga de una sola HTTP API (definida en `serverless.yml`): `POST /chat`, `
 | `anio_min`, `anio_max` | int | Rango de año de estreno |
 | `plataformas` | list[str] | Solo para esta consulta, **reemplaza** las del perfil. `[]` = cualquier plataforma de Perú. Si se omite, se usan las de `Perfil`. Nombres canónicos de `plataformas.csv` |
 | `parecido_a` | int | `id` de una película: modo "parecidas a X" |
+| `orden` | `"relevancia"` \| `"reciente"` | Por defecto `relevancia`. `reciente`: de las 30 más afines, las de estreno más nuevo primero ("lo más reciente que me guste") |
 | `excluir` | list[int] | Ids que no deben salir (además de los que se excluyen solos) |
 | `guardar` | bool | Guardar en `Recomendaciones` (por defecto `true`; `false` para pruebas) |
 | `usuario_id` | str | Solo en invocación directa (pruebas). Por API Gateway se ignora: siempre es el usuario fijo de la app (`USUARIO_ID`), porque la API no tiene autenticación |
@@ -159,7 +160,7 @@ Si la película ya estaba registrada, se reemplaza: sirve para corregir una nota
 
 ## Chat (B → frontend)
 
-`POST /chat` con `{"usuario_id": "<id local del navegador>", "mensaje": "texto"}` → `{"usuario_id": "...", "respuesta": "texto del bot"}`. Aquí `usuario_id` solo separa conversaciones en la memoria (`promptcorn-chat-conversaciones`). Las herramientas son de un solo usuario (`usuario-demo`).
+`POST /chat` con `{"usuario_id": "<id local del navegador>", "mensaje": "texto"}` → `{"usuario_id": "...", "respuesta": "texto del bot"}`. Con `"depurar": true` también devuelve `traza`: cada llamada a Groq y cada herramienta con sus argumentos y resultado. Esa misma traza queda siempre en CloudWatch (`serverless logs -f chat`), una línea JSON por turno. Aquí `usuario_id` solo separa conversaciones en la memoria (`promptcorn-chat-conversaciones`). Las herramientas son de un solo usuario (`usuario-demo`).
 
 ## Tablas DynamoDB (de A)
 

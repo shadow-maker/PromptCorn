@@ -62,6 +62,12 @@ class TestRecomendador(unittest.TestCase):
         self.assertNotIn(5, self.ids(self.rec.recomendar(n=10, solo_disponibles=True)))
         self.assertEqual(self.rec.recomendar(n=10, generos=["Terror"]), [])
 
+    def test_orden_reciente(self):
+        r = self.rec.recomendar({1: 5}, n=3, orden="reciente")
+        anios = [x["anio"] for x in r]
+        self.assertEqual(anios, sorted(anios, reverse=True))
+        self.assertEqual(r[0]["id"], 3)  # 2015: la más nueva entre las afines
+
     def test_arranque_en_frio_por_prior(self):
         r = self.rec.recomendar(n=2)
         self.assertEqual(self.ids(r), [5, 4])  # las más populares

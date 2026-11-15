@@ -16,7 +16,7 @@ params:
     tablaPerfil: promptcorn-tools-perfil
     tablaRecomendaciones: promptcorn-tools-recomendaciones
     tablaConversaciones: promptcorn-chat-conversaciones
-    groqModel: openai/gpt-oss-20b
+    groqModel: openai/gpt-oss-120b                 # el 20b seguía peor las instrucciones (inventaba títulos)
 
 provider:
   name: aws

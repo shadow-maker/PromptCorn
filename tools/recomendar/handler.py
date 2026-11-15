@@ -167,6 +167,9 @@ def recomendar(body: dict, almacen, ahora: datetime | None = None) -> dict:
         "anio_max": _entero(body, "anio_max", 1800, 2100),
     }
     parecido_a = _entero(body, "parecido_a", 1, 10**9)
+    orden = body.get("orden") or "relevancia"
+    if orden not in ("relevancia", "reciente"):
+        raise ErrorEntrada("'orden' debe ser 'relevancia' o 'reciente'.")
     excluir = body.get("excluir") or []
     if not isinstance(excluir, list) or not all(isinstance(x, int) and not isinstance(x, bool) for x in excluir):
         raise ErrorEntrada("'excluir' debe ser una lista de ids (enteros).")
@@ -201,7 +204,7 @@ def recomendar(body: dict, almacen, ahora: datetime | None = None) -> dict:
 
     resultados = rec.recomendar(
         notas, descartadas=descartadas, excluir=[*vistas_sin_nota, *recientes, *excluir], n=cantidad,
-        parecido_a=parecido_a, plataformas=plataformas, solo_disponibles=True, **filtros)
+        parecido_a=parecido_a, orden=orden, plataformas=plataformas, solo_disponibles=True, **filtros)
     if not resultados:
         avisos.append("Ninguna película cumple todos los filtros: sugiere al usuario relajar alguno.")
     elif len(resultados) < cantidad:

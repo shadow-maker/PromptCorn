@@ -69,6 +69,23 @@ class TestLimites(unittest.TestCase):
         self.assertNotIn("reasoning", asistente)
         self.assertIn("tool_calls", asistente)
 
+    @patch("lambda_function.ejecutar_herramienta", return_value={"modo": "perfil", "recomendaciones": []})
+    @patch("lambda_function.guardar_mensaje")
+    @patch("lambda_function.obtener_conversacion", return_value=[])
+    @patch("lambda_function.consultar_groq")
+    def test_depurar_devuelve_traza(self, mock_groq, *_):
+        llamada = SimpleNamespace(id="c1", function=SimpleNamespace(name="recomendar", arguments='{"orden": "reciente"}'))
+        mock_groq.side_effect = [FakeMensaje(tool_calls=[llamada]), FakeMensaje(content="listo")]
+        r = lambda_handler({"body": json.dumps({"usuario_id": "u1", "mensaje": "algo nuevo", "depurar": True})}, None)
+        traza = json.loads(r["body"])["traza"]
+        herramientas = [p for p in traza if p["paso"] == "herramienta"]
+        self.assertEqual(herramientas[0]["nombre"], "recomendar")
+        self.assertIn("reciente", herramientas[0]["argumentos"])
+        # sin depurar, la respuesta no trae la traza
+        mock_groq.side_effect = [FakeMensaje(content="hola")]
+        r = lambda_handler(evento("hola"), None)
+        self.assertNotIn("traza", json.loads(r["body"]))
+
 
 if __name__ == "__main__":
     unittest.main()

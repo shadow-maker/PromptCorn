@@ -1,4 +1,5 @@
 
+import json
 import os
 from groq import Groq
 
@@ -92,6 +93,16 @@ def consultar_groq(messages, tools=None):
     response = client.chat.completions.create(
         **parametros
     )
+
+    # Consumo de tokens en CloudWatch (para vigilar el límite por minuto de Groq)
+    uso = getattr(response, "usage", None)
+    if uso is not None:
+        print(json.dumps({
+            "tipo": "groq",
+            "modelo": MODEL,
+            "tokens_entrada": getattr(uso, "prompt_tokens", None),
+            "tokens_salida": getattr(uso, "completion_tokens", None)
+        }))
 
     # Devolver el mensaje completo:
     # puede contener texto o solicitudes de herramientas
