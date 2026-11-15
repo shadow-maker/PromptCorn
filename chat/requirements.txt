@@ -1,4 +1,5 @@
+# Dependencias de la Lambda del chat (boto3 ya viene en el runtime de Lambda;
+# se lista para correr las pruebas en local).
 groq
-boto3
 requests
-pip install -r requirements.txt
+boto3

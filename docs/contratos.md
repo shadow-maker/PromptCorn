@@ -1,11 +1,20 @@
-# Contratos de las herramientas y tablas (Persona A)
+# Contratos de las APIs y tablas
 
-Punto de contacto entre el chat (B) y el backend (A). Las películas se identifican **solo con el `id` propio** del catálogo.
+Punto de contacto entre el chat (B) y el backend (A). Las películas se identifican **solo con el `id` propio** del catálogo (entero).
 
-| Herramienta | Estado del contrato |
-|---|---|
-| `recomendar` | ✅ Implementado (`tools/recomendar/`) |
-| `buscar_pelicula`, `ver_donde_ver`, `registrar_vista`, `guardar_plataformas`, `obtener_historial` | Borrador en [equipo.md](equipo.md) |
+Todas las herramientas cuelgan de una sola API de API Gateway (`promptcorn-tools-api`), con una ruta `POST /<herramienta>` cada una. El chat solo necesita la URL base (`API_TOOLS_URL`). Todas usan al usuario fijo de la app: el chat no manda el usuario.
+
+| API | Ruta | Estado |
+|---|---|---|
+| `recomendar` | `POST /recomendar` | ✅ Implementado (`tools/recomendar/`) |
+| `buscar_pelicula` | `POST /buscar_pelicula` | Contrato cerrado; falta implementar |
+| `ver_donde_ver` | `POST /ver_donde_ver` | Contrato cerrado; falta implementar |
+| `registrar_vista` | `POST /registrar_vista` | Contrato cerrado; falta implementar |
+| `guardar_plataformas` | `POST /guardar_plataformas` | Contrato cerrado; falta implementar |
+| `obtener_historial` | `POST /obtener_historial` | Contrato cerrado; falta implementar |
+| Chat (B) | `POST /chat` (API del chat) | ✅ Implementado (`chat/`) |
+
+**Errores, igual en todas:** `400` con `{"error": "...", ...}` cuando el request es inválido. Puede traer listas de valores válidos (`generos_validos`, `plataformas_validas`) para que el LLM corrija y reintente. `404` cuando el `id` no existe. `500` con `{"error": "..."}` ante una falla interna. El chat le pasa al LLM el body de los 400/404, así puede corregirse solo.
 
 ## `recomendar` (API del modelo de ML)
 
@@ -75,6 +84,83 @@ Punto de contacto entre el chat (B) y el backend (A). Las películas se identifi
 | 500 | Error interno | `{"error": "Error interno en el recomendador."}`. El detalle queda en CloudWatch |
 
 Por invocación directa (sin API Gateway) el error llega como `{"error": ..., "status": 400}`.
+
+## `buscar_pelicula`
+
+Busca por título en vivo, así que tolera errores de tipeo, títulos en español o en inglés y estrenos recientes. Traduce cada resultado a nuestro `id`.
+
+| Request | Tipo | |
+|---|---|---|
+| `titulo` | str | Obligatorio |
+| `anio` | int | Opcional, para desambiguar |
+
+```json
+{"resultados": [
+  {"id": 8318, "titulo": "Interestelar", "anio": 2014, "sinopsis": "…", "poster": "/….jpg", "en_catalogo": true},
+  {"id": null, "titulo": "Oppenheimer", "anio": 2023, "sinopsis": "…", "poster": "/….jpg", "en_catalogo": false}
+], "avisos": []}
+```
+
+- Devuelve hasta 5 resultados, del más al menos relevante. Si son varios, el bot pregunta cuál era.
+- **`en_catalogo: false`** (y `id: null`): la película existe, pero no está en nuestro catálogo, que llega hasta 2018. No se puede registrar ni usar en `parecido_a`. El bot lo explica de forma amable y ofrece una alternativa por género (HU8).
+- `resultados: []`: no se encontró nada con ese título.
+
+## `ver_donde_ver`
+
+| Request | Tipo | |
+|---|---|---|
+| `id` | int | Obligatorio |
+
+```json
+{"id": 8318, "titulo": "Interestelar", "plataformas": ["Prime Video", "HBO Max", "Claro Video"], "fecha": "2026-11-15"}
+```
+
+Disponibilidad **actual** en Perú, solo por suscripción o gratis. `plataformas: []` significa que hoy no está en ninguna plataforma de Perú.
+
+## `registrar_vista`
+
+| Request | Tipo | |
+|---|---|---|
+| `id` | int | Obligatorio |
+| `estado` | `"visto"` \| `"no_me_interesa"` | Por defecto `"visto"` |
+| `calificacion` | number 0.5–5 (múltiplos de 0.5) | Opcional. **Es lo que alimenta el modelo**: el bot debe pedirla cuando el usuario dice que vio una película |
+
+```json
+{"ok": true, "id": 8318, "titulo": "Interestelar", "estado": "visto", "calificacion": 5}
+```
+
+Si la película ya estaba registrada, se reemplaza: sirve para corregir una nota.
+
+## `guardar_plataformas`
+
+| Request | Tipo | |
+|---|---|---|
+| `plataformas` | list[str] | Obligatorio. Se aceptan variantes ("netflix", "Amazon Prime", "HBO", "Disney Plus") y se normalizan al nombre canónico |
+| `accion` | `"reemplazar"` \| `"agregar"` \| `"quitar"` | Por defecto `"reemplazar"` |
+
+```json
+{"ok": true, "plataformas": ["Netflix", "Prime Video"], "no_reconocidas": ["Cuevana"]}
+```
+
+`plataformas` devuelve la lista final del usuario. `no_reconocidas` son las que no se guardaron, para que el bot lo diga.
+
+## `obtener_historial`
+
+| Request | Tipo | |
+|---|---|---|
+| `tipo` | `"recomendaciones"` \| `"vistas"` \| `"todo"` | Por defecto `"todo"` |
+| `limite` | int 1–50 | Por defecto 10 (por tipo), las más recientes primero |
+
+```json
+{
+  "recomendaciones": [{"fecha": "2026-11-15T20:00:00Z", "id": 8619, "titulo": "Mad Max: Furia en el camino", "anio": 2015, "plataformas": ["Prime Video"], "motivo": {"id": 8318, "titulo": "Interestelar", "calificacion": 5}}],
+  "vistas": [{"fecha": "2026-11-15T19:55:00Z", "id": 8318, "titulo": "Interestelar", "estado": "visto", "calificacion": 5}]
+}
+```
+
+## Chat (B → frontend)
+
+`POST /chat` con `{"user_id": "<id local del navegador>", "message": "texto"}` → `{"user_id": "...", "response": "texto del bot"}`. El `user_id` solo separa conversaciones en la memoria (`Conversaciones`). Las herramientas son de un solo usuario.
 
 ## Tablas DynamoDB (de A)
 

@@ -1,66 +1,80 @@
-
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
+import tools_handler
 from tools_handler import ejecutar_herramienta
 
 
-class TestToolsHandler(unittest.TestCase):
+@patch.object(tools_handler, "MOCK_MODE", True)
+class TestToolsHandlerMock(unittest.TestCase):
+    """Las simulaciones respetan el formato de docs/contratos.md."""
 
-    @patch.dict("os.environ", {"MOCK_MODE": "true"})
     def test_recomendar(self):
         resultado = ejecutar_herramienta(
             "recomendar",
-            {"genero": "Ciencia ficción", "limite": 3}
+            {"generos": ["Ciencia ficción"], "cantidad": 3}
         )
-        self.assertEqual(resultado["modo"], "demo")
+        self.assertTrue(resultado["demo"])
         self.assertEqual(len(resultado["recomendaciones"]), 3)
+        primera = resultado["recomendaciones"][0]
+        for campo in ("id", "titulo", "anio", "plataformas", "generos", "motivo"):
+            self.assertIn(campo, primera)
+        self.assertIsInstance(primera["id"], int)
+        self.assertEqual(primera["motivo"]["titulo"], "Interestelar")
 
-    @patch.dict("os.environ", {"MOCK_MODE": "true"})
+    def test_recomendar_sin_resultados_avisa(self):
+        resultado = ejecutar_herramienta("recomendar", {"generos": ["Western"]})
+        self.assertEqual(resultado["recomendaciones"], [])
+        self.assertTrue(resultado["avisos"])
+
     def test_buscar_pelicula(self):
         resultado = ejecutar_herramienta(
             "buscar_pelicula",
             {"titulo": "Interstellar"}
         )
-        self.assertEqual(resultado["titulo"], "Interstellar")
-        self.assertEqual(resultado["año"], 2014)
+        pelicula = resultado["resultados"][0]
+        self.assertEqual(pelicula["id"], 8318)
+        self.assertEqual(pelicula["titulo"], "Interestelar")
+        self.assertTrue(pelicula["en_catalogo"])
 
-    @patch.dict("os.environ", {"MOCK_MODE": "true"})
+    def test_buscar_fuera_del_catalogo(self):
+        resultado = ejecutar_herramienta("buscar_pelicula", {"titulo": "Oppenheimer"})
+        pelicula = resultado["resultados"][0]
+        self.assertFalse(pelicula["en_catalogo"])
+        self.assertIsNone(pelicula["id"])
+
     def test_ver_donde_ver(self):
-        resultado = ejecutar_herramienta(
-            "ver_donde_ver",
-            {"id": "123"}
-        )
-        self.assertEqual(resultado["pelicula_id"], "123")
-        self.assertIn("Netflix", resultado["plataformas"])
+        resultado = ejecutar_herramienta("ver_donde_ver", {"id": 8318})
+        self.assertEqual(resultado["id"], 8318)
+        self.assertIn("HBO Max", resultado["plataformas"])
 
-    @patch.dict("os.environ", {"MOCK_MODE": "true"})
+    def test_ver_donde_ver_id_inexistente(self):
+        resultado = ejecutar_herramienta("ver_donde_ver", {"id": 999999})
+        self.assertFalse(resultado["ok"])
+        self.assertEqual(resultado["status"], 404)
+
     def test_registrar_vista(self):
         resultado = ejecutar_herramienta(
             "registrar_vista",
-            {"id": "123"}
+            {"id": 8318, "calificacion": 5}
         )
-        self.assertTrue(resultado["registrado"])
+        self.assertTrue(resultado["ok"])
+        self.assertEqual(resultado["estado"], "visto")
+        self.assertEqual(resultado["calificacion"], 5)
 
-    @patch.dict("os.environ", {"MOCK_MODE": "true"})
     def test_guardar_plataformas(self):
         resultado = ejecutar_herramienta(
             "guardar_plataformas",
-            {"plataformas": ["Netflix", "Disney+"]}
+            {"plataformas": ["netflix", "Disney Plus", "Cuevana"]}
         )
-        self.assertTrue(resultado["guardado"])
-        self.assertEqual(
-            resultado["plataformas"],
-            ["Netflix", "Disney+"]
-        )
+        self.assertTrue(resultado["ok"])
+        self.assertEqual(resultado["plataformas"], ["Netflix", "Disney+"])
+        self.assertEqual(resultado["no_reconocidas"], ["Cuevana"])
 
-    @patch.dict("os.environ", {"MOCK_MODE": "true"})
     def test_obtener_historial(self):
-        resultado = ejecutar_herramienta(
-            "obtener_historial",
-            {}
-        )
-        self.assertEqual(resultado["historial"], [])
+        resultado = ejecutar_herramienta("obtener_historial", {})
+        self.assertEqual(resultado["recomendaciones"], [])
+        self.assertEqual(resultado["vistas"], [])
 
     def test_herramienta_inexistente(self):
         with self.assertRaises(ValueError):
@@ -70,43 +84,69 @@ class TestToolsHandler(unittest.TestCase):
         with self.assertRaises(ValueError):
             ejecutar_herramienta("recomendar", "texto")
 
-    @patch.dict("os.environ", {"MOCK_MODE": "true"})
     def test_encadenamiento_busqueda_y_plataformas(self):
         pelicula = ejecutar_herramienta(
             "buscar_pelicula",
             {"titulo": "Interstellar"}
-        )
-
-        self.assertEqual(pelicula["id"], "demo_interstellar")
+        )["resultados"][0]
 
         plataformas = ejecutar_herramienta(
             "ver_donde_ver",
             {"id": pelicula["id"]}
         )
 
-        self.assertEqual(
-            plataformas["pelicula_id"],
-            pelicula["id"]
-        )
-        self.assertIn("Netflix", plataformas["plataformas"])
+        self.assertEqual(plataformas["id"], pelicula["id"])
 
-    @patch.dict("os.environ", {"MOCK_MODE": "true"})
-    def test_encadenamiento_busqueda_y_registro(self):
+    def test_encadenamiento_busqueda_y_parecidas(self):
         pelicula = ejecutar_herramienta(
             "buscar_pelicula",
             {"titulo": "Interstellar"}
+        )["resultados"][0]
+
+        resultado = ejecutar_herramienta(
+            "recomendar",
+            {"parecido_a": pelicula["id"], "excluir": [pelicula["id"]]}
         )
 
-        registro = ejecutar_herramienta(
-            "registrar_vista",
-            {"id": pelicula["id"]}
-        )
+        ids = [r["id"] for r in resultado["recomendaciones"]]
+        self.assertNotIn(pelicula["id"], ids)
 
-        self.assertTrue(registro["registrado"])
-        self.assertEqual(
-            registro["pelicula_id"],
-            pelicula["id"]
-        )
+
+@patch.object(tools_handler, "MOCK_MODE", False)
+class TestToolsHandlerReal(unittest.TestCase):
+    """Modo real: URL base única y errores 400/404 devueltos al LLM."""
+
+    @patch.dict("os.environ", {"API_TOOLS_URL": "https://api.ejemplo/"}, clear=True)
+    @patch("tools_handler.requests.post")
+    def test_url_base_por_herramienta(self, mock_post):
+        mock_post.return_value = MagicMock(status_code=200, json=lambda: {"ok": True})
+        ejecutar_herramienta("registrar_vista", {"id": 1})
+        self.assertEqual(mock_post.call_args.args[0], "https://api.ejemplo/registrar_vista")
+
+    @patch.dict("os.environ", {"API_TOOLS_URL": "https://api.ejemplo",
+                               "API_RECOMENDAR_URL": "https://otra/recomendar"}, clear=True)
+    @patch("tools_handler.requests.post")
+    def test_url_especifica_tiene_prioridad(self, mock_post):
+        mock_post.return_value = MagicMock(status_code=200, json=lambda: {})
+        ejecutar_herramienta("recomendar", {})
+        self.assertEqual(mock_post.call_args.args[0], "https://otra/recomendar")
+
+    @patch.dict("os.environ", {}, clear=True)
+    def test_sin_url_configurada(self):
+        with self.assertRaises(ValueError):
+            ejecutar_herramienta("recomendar", {})
+
+    @patch.dict("os.environ", {"API_TOOLS_URL": "https://api.ejemplo"}, clear=True)
+    @patch("tools_handler.requests.post")
+    def test_error_400_vuelve_al_llm(self, mock_post):
+        mock_post.return_value = MagicMock(
+            status_code=400,
+            json=lambda: {"error": "Valores no reconocidos en 'generos': ['Anime'].",
+                          "generos_validos": ["Acción", "Animación"]})
+        resultado = ejecutar_herramienta("recomendar", {"generos": ["Anime"]})
+        self.assertFalse(resultado["ok"])
+        self.assertEqual(resultado["status"], 400)
+        self.assertIn("generos_validos", resultado)
 
 
 if __name__ == "__main__":

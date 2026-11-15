@@ -267,11 +267,11 @@ class TestLambda(unittest.TestCase):
         )
 
         # Verificar ejecucion de la herramienta.
+        # Las herramientas son de un solo usuario: no reciben user_id.
         mock_ejecutor.assert_called_once_with(
             "buscar_pelicula",
             {
-                "titulo": "Interstellar",
-                "user_id": "usuario_001"
+                "titulo": "Interstellar"
             }
         )
 

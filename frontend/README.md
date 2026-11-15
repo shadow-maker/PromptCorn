@@ -17,11 +17,11 @@ Interfaz web de PromptCorn, un asistente cinematografico que permite descubrir p
 
 ## 3. Instalacion
 
-Clonar el repositorio:
+El frontend vive en la carpeta `frontend/` del repositorio del proyecto:
 
 ```bash
-git clone <URL_DEL_REPOSITORIO>
-cd PromptCorn-frontend
+git clone https://github.com/shadow-maker/PromptCorn.git
+cd PromptCorn/frontend
 npm install
 ```
 
@@ -35,7 +35,7 @@ Configurar la variable:
 VITE_API_URL=
 ```
 
-Esta variable contendra la URL de API Gateway que expone la Lambda `/chat`.
+Esta variable contendra la URL completa del endpoint `POST /chat` de la API del chat (contrato en `docs/contratos.md`).
 
 Si se deja vacia, la aplicacion funciona en modo demostracion.
 

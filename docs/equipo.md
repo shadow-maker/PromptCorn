@@ -8,17 +8,7 @@ Dos integrantes, división por capas. **El único punto de contacto son los cont
 
 - **Dataset:** descarga, limpieza y consolidación del catálogo (hecho: ver [datos.md](datos.md)).
 - **Modelo de ML:** vectores de similitud entre películas calculados offline (SVD sobre la matriz de calificaciones) y la API de ML (`/recomendar`), que en producción solo usa numpy. Detalle en [modelo.md](modelo.md).
-- **Herramientas que invoca el chat** (borrador, nombres y formatos no definitivos):
-
-| Herramienta | Recibe | Devuelve |
-|---|---|---|
-| `recomendar` ✅ | filtros opcionales (géneros, duración máx., años, plataformas, parecida a X, excluir), cantidad. Las notas y plataformas las lee él mismo de las tablas | candidatas con id, título, año, plataformas, géneros, sinopsis, póster, afinidad y motivo. **Contrato final en [contratos.md](contratos.md)** |
-| `buscar_pelicula` | texto y año opcional | coincidencias (id, título, año, sinopsis breve, póster); varias si es ambiguo |
-| `ver_donde_ver` | id de película (región PE) | plataformas de suscripción donde está |
-| `registrar_vista` | id, calificación opcional, estado (`visto` / `no_me_interesa`) | confirmación |
-| `guardar_plataformas` | plataformas (agregar, quitar o reemplazar) | perfil actualizado |
-| `obtener_historial` | — | recomendaciones pasadas con fecha y plataforma |
-
+- **Herramientas que invoca el chat:** `recomendar`, `buscar_pelicula`, `ver_donde_ver`, `registrar_vista`, `guardar_plataformas`, `obtener_historial`. Contratos cerrados en [contratos.md](contratos.md).
 - **Tablas DynamoDB propias:** `Vistas`, `Perfil`, `Recomendaciones` (y `Peliculas`, si se adopta la propuesta de [datos.md](datos.md#uso-en-aws-propuesta-aún-no-conectado)).
 - **Entregables:** colección de Postman (Parte C backend), diagrama de arquitectura AWS, región y su sustento, costos con calculator.aws (Parte B), README del backend con script o notebook de entrenamiento.
 - **Pruebas:** escenarios Gherkin HU1–HU4.

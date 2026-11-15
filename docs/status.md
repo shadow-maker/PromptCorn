@@ -11,8 +11,8 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 | 0 | Fundaciones (repo, datos, llaves, accesos, contratos) | A+B | 🟡 En curso |
 | 1 | Modelo de ML y `/recomendar` | A | 🟢 Código listo; falta desplegar en AWS ([guía](despliegue.md)) |
 | 2 | Tablas DynamoDB y herramientas | A | ⚪ Pendiente |
-| 3 | Lambda del chat con Groq | B | ❔ A confirmar con B |
-| 4 | Frontend | B | ❔ A confirmar con B |
+| 3 | Lambda del chat con Groq | B | 🟢 Código listo e integrado con el contrato; falta desplegar |
+| 4 | Frontend | B | 🟡 Funciona en modo demostración; falta conectar y alojar |
 | 5 | Integración y pruebas Gherkin | A+B | ⚪ Pendiente |
 | 6 | Entregables (diagrama, región, costos, Postman, READMEs, Partes A y B) | A+B | ⚪ Pendiente |
 | 7 | Cierre y ensayo | A+B | ⚪ Pendiente |
@@ -25,7 +25,7 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - [x] (A) Datos descargados: MovieLens ml-latest-small + TMDB (snapshot de disponibilidad PE del 2026-11-12).
 - [x] (A) Catálogo consolidado con ID propio: 9,649 películas y 100,612 calificaciones ([datos.md](datos.md)).
 - [ ] (A) Compartir datos con B por Drive ([qué compartir](datos.md#compartir-con-la-persona-b)).
-- [ ] (A+B) Contratos JSON de las herramientas (ID de película = `id` propio, ya decidido).
+- [x] (A+B) Contratos JSON de las 6 herramientas y del chat ([contratos.md](contratos.md)). El chat ya los usa.
 - [ ] (B) API key de Groq; verificar modelos con tool calling y límites del plan gratuito.
 - [ ] (A+B) Accesos a la cuenta AWS y convención de prefijos.
 - [x] (A) Región AWS: us-east-1 (falta redactar el sustento para el informe).
@@ -49,12 +49,17 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - [ ] Colección de Postman con evidencia de cada herramienta.
 
 ## Etapa 3: Lambda del chat (B)
-- [ ] Prompt del sistema, tool calling con Groq, memoria en `Conversaciones`, reintento si el JSON falla.
-- [ ] Desarrollo contra simulaciones → cambio a URLs reales por variables de entorno.
+- [x] Prompt del sistema, tool calling con Groq (hasta 5 vueltas), memoria en `Conversaciones`, errores de herramientas devueltos al LLM.
+- [x] Simulaciones con el formato del contrato (`MOCK_MODE=true`); modo real con una sola URL base (`API_TOOLS_URL`).
+- [x] Integrado a `main` y alineado al contrato (definiciones de herramientas, prompt, key de Groq desde SSM).
+- [ ] Desplegar la Lambda del chat y su API ([despliegue.md](despliegue.md#chat-persona-b)).
+- [ ] Probar con Groq real (modelo por defecto `openai/gpt-oss-20b`).
 
 ## Etapa 4: Frontend (B)
-- [ ] Prototipo en `/frontend` y conexión con API Gateway.
-- [ ] Hosting en S3 + CloudFront o Amplify; créditos a TMDB, JustWatch y MovieLens.
+- [x] Prototipo en `/frontend` (React + Vite), en modo demostración si no hay `VITE_API_URL`.
+- [ ] Conectar con la API del chat.
+- [ ] Hosting en S3 + CloudFront o Amplify.
+- [ ] Créditos en la interfaz: TMDB, JustWatch y MovieLens (obligatorio por licencia; aún no están).
 
 ## Etapa 5: Integración y pruebas (A+B)
 - [ ] (A) Escenarios Gherkin HU1–HU4.

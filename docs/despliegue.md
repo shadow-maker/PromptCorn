@@ -102,3 +102,67 @@ Esa URL (+ `/recomendar`) es la que la Persona B pone en la variable de entorno 
 ### Notas de Learner Lab
 - Los recursos persisten entre sesiones, pero solo responden mientras el lab está iniciado.
 - Si algo responde `AccessDenied`, revisa que la función use `LabRole`.
+
+## Chat (Persona B)
+
+### 0. Preparar (local)
+```bash
+chat/empaquetar.sh        # -> dist/promptcorn-chat-python3.14.zip (y 3.13)
+```
+
+### 1. Key de Groq en SSM
+Systems Manager → **Parameter Store → Create parameter**:
+- Nombre `/promptcorn/groq_api_key`.
+- Tipo **SecureString**.
+- Valor: la key de Groq.
+
+Si Learner Lab no deja usar SSM, se puede poner la key directo en la variable `GROQ_API_KEY` de la Lambda. Nunca en el repo.
+
+### 2. Tabla de memoria
+DynamoDB → **Create table** con nombre `promptcorn-chat-conversaciones`, partition key `user_id` (String), sort key `message_id` (String) y capacidad On-demand.
+
+### 3. Función Lambda
+1. **Create function:**
+   - Nombre `promptcorn-chat`.
+   - Runtime Python 3.14 (o 3.13, igual que el zip).
+   - Arquitectura x86_64.
+   - Rol **`LabRole`**.
+2. **Upload from .zip** → `dist/promptcorn-chat-python3.14.zip`.
+   - Handler: `lambda_function.lambda_handler`. Es el valor por defecto.
+3. **General configuration:** Memory 256 MB, Timeout **29 s**. API Gateway corta a los 30 s.
+4. **Environment variables:**
+
+| Variable | Valor |
+|---|---|
+| `CONVERSATIONS_TABLE` | `promptcorn-chat-conversaciones` |
+| `GROQ_API_KEY_PARAM` | `/promptcorn/groq_api_key` |
+| `GROQ_MODEL` | `openai/gpt-oss-20b` (o el que se elija) |
+| `MOCK_MODE` | `false` (`true` = herramientas simuladas, sin backend) |
+| `API_TOOLS_URL` | Invoke URL de `promptcorn-tools-api`, sin `/` al final |
+
+5. **Test** con el evento:
+```json
+{"body": "{\"user_id\": \"prueba\", \"message\": \"Recomiéndame una comedia corta\"}"}
+```
+
+### 4. API del chat
+API Gateway → **Create API → HTTP API**:
+- Integración Lambda `promptcorn-chat`.
+- Nombre `promptcorn-chat-api`.
+- Ruta **POST** `/chat`.
+- Stage `$default` con auto-deploy.
+- **CORS:** Allow origin `*`, Allow methods `POST, OPTIONS`, Allow headers `content-type`.
+
+La URL `<invoke-url>/chat` es la que va en `VITE_API_URL` del frontend.
+
+## Frontend (Persona B)
+```bash
+cd frontend && npm install
+echo "VITE_API_URL=<invoke-url>/chat" > .env
+npm run build             # -> frontend/dist/
+```
+1. S3 → **Create bucket** `promptcorn-chat-web-<sufijo>`. Desactiva **Block all public access** y acepta la advertencia.
+2. **Properties → Static website hosting → Enable**, con index document `index.html`.
+3. **Permissions → Bucket policy:** lectura pública de `arn:aws:s3:::promptcorn-chat-web-<sufijo>/*` (`s3:GetObject`, Principal `*`).
+4. **Upload:** el *contenido* de `frontend/dist/`, no la carpeta.
+5. La URL del sitio aparece en Static website hosting. CloudFront delante es opcional: da HTTPS y suma al diagrama.

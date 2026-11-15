@@ -8,8 +8,23 @@ from tools_handler import ejecutar_herramienta
 
 
 # ============================================================
-# DEFINICIÓN DE HERRAMIENTAS PARA GROQ
+# DEFINICIÓN DE HERRAMIENTAS PARA GROQ (contrato: docs/contratos.md)
 # ============================================================
+
+GENEROS = [
+    "Acción", "Animación", "Aventura", "Bélica", "Ciencia ficción", "Comedia",
+    "Crimen", "Documental", "Drama", "Familia", "Fantasía", "Historia",
+    "Misterio", "Música", "Película de TV", "Romance", "Suspenso", "Terror",
+    "Western",
+]
+
+ID_PELICULA = {
+    "type": "integer",
+    "description": (
+        "id de la película, tal como lo devolvió buscar_pelicula, "
+        "recomendar u obtener_historial. Nunca lo inventes."
+    )
+}
 
 TOOLS = [
     {
@@ -17,19 +32,57 @@ TOOLS = [
         "function": {
             "name": "recomendar",
             "description": (
-                "Recomienda películas según el género solicitado "
-                "y la cantidad de resultados."
+                "Recomienda películas con el modelo de ML de PromptCorn. "
+                "Ya conoce las notas, las películas vistas y las plataformas "
+                "del usuario: solo pásale los filtros que el usuario pidió. "
+                "Excluye sola lo visto y lo recomendado en las últimas 24 h, "
+                "así que para 'dame otras opciones' basta con volver a llamarla."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "genero": {
-                        "type": "string",
-                        "description": "Género cinematográfico."
-                    },
-                    "limite": {
+                    "cantidad": {
                         "type": "integer",
-                        "description": "Cantidad máxima de películas."
+                        "minimum": 1,
+                        "maximum": 10,
+                        "description": "Cuántas películas devolver (por defecto 3)."
+                    },
+                    "generos": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": GENEROS},
+                        "description": "Al menos uno de estos géneros."
+                    },
+                    "duracion_max": {
+                        "type": "integer",
+                        "description": "Duración máxima en minutos."
+                    },
+                    "anio_min": {
+                        "type": "integer",
+                        "description": "Año de estreno mínimo."
+                    },
+                    "anio_max": {
+                        "type": "integer",
+                        "description": "Año de estreno máximo."
+                    },
+                    "plataformas": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": (
+                            "Solo si el usuario pide plataformas distintas a "
+                            "las suyas para esta consulta. [] = cualquiera."
+                        )
+                    },
+                    "parecido_a": {
+                        **ID_PELICULA,
+                        "description": (
+                            "id de una película para recomendar parecidas a "
+                            "ella. Obténlo antes con buscar_pelicula."
+                        )
+                    },
+                    "excluir": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "description": "ids que no deben salir."
                     }
                 },
                 "required": [],
@@ -41,13 +94,21 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "buscar_pelicula",
-            "description": "Busca una película por su título.",
+            "description": (
+                "Busca una película por título (en español o inglés) y "
+                "devuelve su id. Úsala antes de cualquier herramienta que "
+                "necesite un id que aún no tienes."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "titulo": {
                         "type": "string",
                         "description": "Título de la película."
+                    },
+                    "anio": {
+                        "type": "integer",
+                        "description": "Año de estreno, si el usuario lo dijo."
                     }
                 },
                 "required": ["titulo"],
@@ -60,17 +121,12 @@ TOOLS = [
         "function": {
             "name": "ver_donde_ver",
             "description": (
-                "Consulta las plataformas donde se puede ver "
-                "una película."
+                "Plataformas de streaming en Perú donde se puede ver hoy "
+                "una película (suscripción o gratis)."
             ),
             "parameters": {
                 "type": "object",
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "description": "Identificador de la película."
-                    }
-                },
+                "properties": {"id": ID_PELICULA},
                 "required": ["id"],
                 "additionalProperties": False
             }
@@ -80,13 +136,24 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "registrar_vista",
-            "description": "Registra una película como vista.",
+            "description": (
+                "Registra que el usuario vio una película (con su nota, que "
+                "es lo que aprende el modelo) o que no le interesa."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "id": {
+                    "id": ID_PELICULA,
+                    "estado": {
                         "type": "string",
-                        "description": "Identificador de la película."
+                        "enum": ["visto", "no_me_interesa"],
+                        "description": "Por defecto visto."
+                    },
+                    "calificacion": {
+                        "type": "number",
+                        "minimum": 0.5,
+                        "maximum": 5,
+                        "description": "Nota de 0.5 a 5 (en medios puntos)."
                     }
                 },
                 "required": ["id"],
@@ -99,8 +166,8 @@ TOOLS = [
         "function": {
             "name": "guardar_plataformas",
             "description": (
-                "Guarda las plataformas de streaming preferidas "
-                "del usuario."
+                "Guarda las plataformas de streaming que tiene el usuario. "
+                "Las recomendaciones se filtran por ellas."
             ),
             "parameters": {
                 "type": "object",
@@ -108,7 +175,12 @@ TOOLS = [
                     "plataformas": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Lista de plataformas."
+                        "description": "Nombres de plataformas, p. ej. Netflix, Prime Video, HBO Max, Disney+."
+                    },
+                    "accion": {
+                        "type": "string",
+                        "enum": ["reemplazar", "agregar", "quitar"],
+                        "description": "Por defecto reemplazar la lista completa."
                     }
                 },
                 "required": ["plataformas"],
@@ -121,12 +193,24 @@ TOOLS = [
         "function": {
             "name": "obtener_historial",
             "description": (
-                "Obtiene el historial de películas vistas "
-                "por el usuario."
+                "Recomendaciones pasadas (con fecha, plataforma y motivo) "
+                "y películas que el usuario registró como vistas."
             ),
             "parameters": {
                 "type": "object",
-                "properties": {},
+                "properties": {
+                    "tipo": {
+                        "type": "string",
+                        "enum": ["recomendaciones", "vistas", "todo"],
+                        "description": "Por defecto todo."
+                    },
+                    "limite": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 50,
+                        "description": "Cuántas de cada tipo (por defecto 10)."
+                    }
+                },
                 "required": [],
                 "additionalProperties": False
             }
@@ -210,8 +294,8 @@ def procesar_mensaje(user_id, mensaje):
                         "Los argumentos deben ser un objeto JSON."
                     )
 
-                # Incorporar el identificador del usuario.
-                argumentos["user_id"] = user_id
+                # Las herramientas son de un solo usuario (el fijo de la
+                # app): no se les manda el user_id del chat.
 
                 resultado = ejecutar_herramienta(
                     nombre_herramienta,

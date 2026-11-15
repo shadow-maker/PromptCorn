@@ -7,7 +7,26 @@ from groq import Groq
 # 1. CONFIGURACION
 # ==================================================
 
-API_KEY = os.getenv("GROQ_API_KEY")
+def _leer_api_key():
+    """
+    La key vive en SSM Parameter Store (SecureString); la variable
+    GROQ_API_KEY_PARAM tiene el nombre del parámetro.
+    GROQ_API_KEY directo queda para pruebas locales.
+    """
+    if os.getenv("GROQ_API_KEY"):
+        return os.getenv("GROQ_API_KEY")
+    parametro = os.getenv("GROQ_API_KEY_PARAM")
+    if parametro:
+        import boto3
+        respuesta = boto3.client("ssm").get_parameter(
+            Name=parametro,
+            WithDecryption=True
+        )
+        return respuesta["Parameter"]["Value"]
+    return None
+
+
+API_KEY = _leer_api_key()
 
 MODEL = os.getenv(
     "GROQ_MODEL",
@@ -16,8 +35,8 @@ MODEL = os.getenv(
 
 if not API_KEY:
     raise ValueError(
-        "No se encontro GROQ_API_KEY. "
-        "Configura la variable de entorno."
+        "No se encontro la key de Groq. Configura GROQ_API_KEY_PARAM "
+        "(parametro de SSM) o GROQ_API_KEY (pruebas locales)."
     )
 
 
