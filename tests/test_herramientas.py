@@ -104,10 +104,10 @@ class Base(unittest.TestCase):
     def tearDown(self):
         h._almacen = h._tmdb = None
 
-    def llamar(self, herramienta, tipo="application/json", **args):
+    def llamar(self, herramienta, content_type="application/json", **args):
         """Como lo llama el chat: POST /<herramienta> por API Gateway."""
         r = h.lambda_handler({"rawPath": f"/{herramienta}", "body": json.dumps(args),
-                              "headers": {"content-type": tipo},
+                              "headers": {"content-type": content_type},
                               "requestContext": {"http": {"method": "POST"}}}, None)
         return r["statusCode"], json.loads(r["body"])
 
@@ -255,7 +255,7 @@ class TestReiniciar(Base):
 
     def test_solo_json(self):
         self.llamar("registrar_vista", id=8318, calificacion=5)
-        estado, _ = self.llamar("reiniciar_usuario", tipo="text/plain", confirmar="BORRAR")
+        estado, _ = self.llamar("reiniciar_usuario", content_type="text/plain", confirmar="BORRAR")
         self.assertEqual(estado, 415)
         self.assertEqual(len(h._almacen.vistas), 1)  # no borró nada
 
