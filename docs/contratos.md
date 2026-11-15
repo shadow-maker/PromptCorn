@@ -7,11 +7,7 @@ Todas las herramientas cuelgan de una sola API de API Gateway (`promptcorn-tools
 | API | Ruta | Estado |
 |---|---|---|
 | `recomendar` | `POST /recomendar` | ✅ Implementado (`tools/recomendar/`) |
-| `buscar_pelicula` | `POST /buscar_pelicula` | Contrato cerrado; falta implementar |
-| `ver_donde_ver` | `POST /ver_donde_ver` | Contrato cerrado; falta implementar |
-| `registrar_vista` | `POST /registrar_vista` | Contrato cerrado; falta implementar |
-| `guardar_plataformas` | `POST /guardar_plataformas` | Contrato cerrado; falta implementar |
-| `obtener_historial` | `POST /obtener_historial` | Contrato cerrado; falta implementar |
+| `buscar_pelicula`, `ver_donde_ver`, `registrar_vista`, `guardar_plataformas`, `obtener_historial` | `POST /<herramienta>` | ✅ Implementado (`tools/herramientas/`, una sola Lambda) |
 | Chat (B) | `POST /chat` (API del chat) | ✅ Implementado (`chat/`) |
 
 **Errores, igual en todas:** `400` con `{"error": "...", ...}` cuando el request es inválido. Puede traer listas de valores válidos (`generos_validos`, `plataformas_validas`) para que el LLM corrija y reintente. `404` cuando el `id` no existe. `500` con `{"error": "..."}` ante una falla interna. El chat le pasa al LLM el body de los 400/404, así puede corregirse solo.
@@ -104,6 +100,7 @@ Busca por título en vivo, así que tolera errores de tipeo, títulos en españo
 - Devuelve hasta 5 resultados, del más al menos relevante. Si son varios, el bot pregunta cuál era.
 - **`en_catalogo: false`** (y `id: null`): la película existe, pero no está en nuestro catálogo, que llega hasta 2018. No se puede registrar ni usar en `parecido_a`. El bot lo explica de forma amable y ofrece una alternativa por género (HU8).
 - `resultados: []`: no se encontró nada con ese título.
+- Si la búsqueda en vivo no encuentra nada del catálogo (por errores de tipeo como "intersteller" o "toy stori", o porque la API no responde), busca también en el catálogo local por similitud. Si la API no respondió, `avisos` lo dice.
 
 ## `ver_donde_ver`
 
@@ -112,10 +109,10 @@ Busca por título en vivo, así que tolera errores de tipeo, títulos en españo
 | `id` | int | Obligatorio |
 
 ```json
-{"id": 8318, "titulo": "Interestelar", "plataformas": ["Prime Video", "HBO Max", "Claro Video"], "fecha": "2026-11-15"}
+{"id": 8318, "titulo": "Interestelar", "plataformas": ["Prime Video", "HBO Max", "Claro Video"], "fecha": "2026-11-15", "avisos": []}
 ```
 
-Disponibilidad **actual** en Perú, solo por suscripción o gratis. `plataformas: []` significa que hoy no está en ninguna plataforma de Perú.
+Disponibilidad **actual** en Perú, solo por suscripción o gratis. `plataformas: []` significa que hoy no está en ninguna plataforma de Perú. Si la consulta en vivo falla, devuelve la del catálogo: `fecha` es la de ese snapshot y `avisos` lo explica.
 
 ## `registrar_vista`
 

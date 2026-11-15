@@ -14,9 +14,14 @@ import re
 from datetime import date
 from pathlib import Path
 
+import sys
+
 import pandas as pd
 
 RAIZ = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(RAIZ / "tools" / "herramientas"))
+import plataformas as plat  # noqa: E402  (misma normalización que usan las herramientas en vivo)
+
 ML = RAIZ / "data" / "raw" / "movielens"
 TMDB = RAIZ / "data" / "raw" / "tmdb"
 SALIDA = RAIZ / "data" / "processed"
@@ -30,29 +35,6 @@ GENEROS_RESPALDO = {
     "War": "Bélica", "Western": "Western",
 }
 RENOMBRAR_GENERO = {"Suspense": "Suspenso"}
-
-# Normalización de plataformas
-SUFIJOS_CANAL = [" Amazon Channel", " Apple TV Channel", " Roku Premium Channel", " Standard with Ads",
-                 " Basic with Ads", " with Ads"]
-RENOMBRAR_PLATAFORMA = {
-    "VIX": "ViX", "ViX Premium": "ViX", "Max": "HBO Max", "Disney Plus": "Disney+",
-    "Paramount Plus": "Paramount+", "Apple TV Plus": "Apple TV+", "Apple TV": "Apple TV+",
-    "Amazon Prime Video": "Prime Video", "Claro video": "Claro Video", "MGM Plus": "MGM+",
-    "MUBI": "Mubi",
-}
-EXCLUIR_PLATAFORMA = {"JustWatch TV Beta"}
-TIPOS_SUSCRIPCION = ("flatrate", "free", "ads")  # se excluye alquiler y compra
-
-
-def normalizar_plataforma(nombre: str) -> str | None:
-    nombre = nombre.strip()
-    if nombre in EXCLUIR_PLATAFORMA:
-        return None
-    for s in SUFIJOS_CANAL:
-        if nombre.lower().endswith(s.lower()):
-            nombre = nombre[: -len(s)].strip()
-    return RENOMBRAR_PLATAFORMA.get(nombre, nombre)
-
 
 def texto(v) -> str | None:
     v = (v or "").strip() if isinstance(v, str) else None
@@ -86,12 +68,7 @@ def fila_pelicula(d: dict, generos_ml: str, titulo_ml: str) -> dict:
     if anio is None:
         m = re.search(r"\((\d{4})\)\s*$", titulo_ml)
         anio = int(m.group(1)) if m else None
-    plataformas = []
-    for tipo in TIPOS_SUSCRIPCION:
-        for p in (d.get("proveedores_pe") or {}).get(tipo, []):
-            n = normalizar_plataforma(p["nombre"])
-            if n and n not in plataformas:
-                plataformas.append(n)
+    plataformas = plat.de_proveedores(d.get("proveedores_pe") or {})
     titulo = texto(d.get("title")) or texto(d.get("original_title"))
     titulo_original = texto(d.get("original_title"))
     return {
@@ -194,7 +171,8 @@ def main() -> None:
         "sin_sinopsis": int(cat.sinopsis.isna().sum()),
         "sin_duracion": int(cat.duracion_min.isna().sum()),
         "sin_poster": int(cat.poster.isna().sum()),
-        "fecha_disponibilidad": date.today().isoformat(),
+        # fecha de la descarga (no de la consolidación): el archivo más reciente de data/raw/tmdb
+        "fecha_disponibilidad": date.fromtimestamp(max(p.stat().st_mtime for p in TMDB.glob("*.json"))).isoformat(),
     })
     (SALIDA / "reporte.json").write_text(json.dumps(reporte, indent=2, ensure_ascii=False))
     print(json.dumps(reporte, indent=2, ensure_ascii=False))

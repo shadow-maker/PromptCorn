@@ -32,7 +32,8 @@ docs/
   status.md       Avance y TODOs
 scripts/          descarga de datos y consolidación del catálogo
 ml/               entrenamiento y evaluación del modelo (entrenar.py, metricas.json)
-tools/recomendar/ Lambda /recomendar (handler.py, recomendador.py, empaquetar.sh, eventos/)
+tools/recomendar/   Lambda /recomendar: API del modelo (handler.py, recomendador.py, empaquetar.sh, eventos/)
+tools/herramientas/ Lambda de las otras 5 herramientas (buscar, dónde ver, registrar, plataformas, historial)
 chat/             Lambda del chat con Groq (Persona B)
 frontend/         chat web (Persona B)
 tests/            pruebas (python -m unittest discover -s tests)

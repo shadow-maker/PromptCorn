@@ -10,7 +10,7 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 |---|---|---|---|
 | 0 | Fundaciones (repo, datos, llaves, accesos, contratos) | A+B | 🟡 En curso |
 | 1 | Modelo de ML y `/recomendar` | A | 🟢 Código listo; falta desplegar en AWS ([guía](despliegue.md)) |
-| 2 | Tablas DynamoDB y herramientas | A | ⚪ Pendiente |
+| 2 | Tablas DynamoDB y herramientas | A | 🟢 Código listo; falta desplegar |
 | 3 | Lambda del chat con Groq | B | 🟢 Código listo e integrado con el contrato; falta desplegar |
 | 4 | Frontend | B | 🟡 Funciona en modo demostración; falta conectar y alojar |
 | 5 | Integración y pruebas Gherkin | A+B | ⚪ Pendiente |
@@ -43,9 +43,11 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - [ ] Pasarle a B la URL de `/recomendar` y el contrato.
 
 ## Etapa 2: Tablas y herramientas (A)
-- [ ] Tablas DynamoDB: `Vistas`, `Perfil`, `Recomendaciones` (esquema definido en [contratos.md](contratos.md); se crean con la guía de despliegue) (+ `Peliculas` si se adopta).
-- [ ] Herramientas en `/tools`: `recomendar`, `buscar_pelicula`, `ver_donde_ver`, `registrar_vista`, `guardar_plataformas`, `obtener_historial`.
-- [ ] Token de TMDB en SSM Parameter Store (SecureString).
+- [x] Esquema de las tablas `Vistas`, `Perfil`, `Recomendaciones` ([contratos.md](contratos.md)).
+- [x] Lambda `promptcorn-tools-herramientas` (`tools/herramientas/`): `buscar_pelicula` (en vivo, tolera tipeo, `en_catalogo`), `ver_donde_ver` (en vivo con respaldo al snapshot), `registrar_vista`, `guardar_plataformas` (normaliza nombres), `obtener_historial`. Incluye 20 pruebas, eventos y `empaquetar.sh`.
+- [x] Catálogo completo para S3 (`scripts/exportar_catalogo.py`, 6.1 MB) en lugar de una tabla `Peliculas`.
+- [ ] (A+B) Desplegar: catálogo en S3, token en SSM, Lambda y ruta `POST /{herramienta}` ([despliegue.md](despliegue.md#herramientas-buscar_pelicula-ver_donde_ver-registrar_vista-guardar_plataformas-obtener_historial)).
+- [ ] Probar el flujo completo con el chat real: `MOCK_MODE=false` y `API_TOOLS_URL`.
 - [ ] Colección de Postman con evidencia de cada herramienta.
 
 ## Etapa 3: Lambda del chat (B)
@@ -79,13 +81,14 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - [ ] Ensayo y exposición (miércoles 18, 19h).
 
 ## Decisiones abiertas
-- Contratos JSON de las herramientas.
-- `id` para películas fuera del catálogo (posteriores a 2018) encontradas en vivo.
-- Versión de Python de las Lambdas (3.13 o 3.14).
-- Detalle del híbrido filtros del LLM + ranking del ML.
-- Arquitectura de datos en AWS (propuesta en [datos.md](datos.md#uso-en-aws-propuesta-aún-no-conectado)): DynamoDB `Peliculas` para consultas por llave.
+- Versión de Python de las Lambdas (3.13 o 3.14): se confirma en la consola. Hay zips para ambas.
 
 ## Decisiones tomadas
 - Artefactos del modelo (vectores + catálogo del modelo) en **S3**; la Lambda los carga al arrancar.
 - `recomendar` excluye lo ya recomendado **en el último día** (para que "dame otras opciones" traiga títulos nuevos).
-- `recomendar` lee por su cuenta las notas (`Vistas`) y las plataformas (`Perfil`), filtra por disponibilidad en Perú y guarda lo entregado en `Recomendaciones`. El chat solo manda filtros. Falta avisarle a B.
+- `recomendar` lee por su cuenta las notas (`Vistas`) y las plataformas (`Perfil`), filtra por disponibilidad en Perú y guarda lo entregado en `Recomendaciones`. El chat solo manda filtros (ya integrado en `chat/`).
+- Contratos JSON de las 6 herramientas y del chat cerrados ([contratos.md](contratos.md)).
+- Películas fuera del catálogo: `buscar_pelicula` las devuelve con `id: null` y `en_catalogo: false`; no se agregan.
+- Las 5 herramientas de datos van en una sola Lambda (`POST /{herramienta}`) y `recomendar` va aparte, porque usa numpy y el modelo.
+- El catálogo completo va en S3 como JSON en memoria; no hay tabla `Peliculas`. Las bases de datos del enunciado son las 4 tablas DynamoDB.
+- Un solo bucket `promptcorn-tools-datos-<sufijo>`, con los prefijos `modelo/` y `catalogo/`.

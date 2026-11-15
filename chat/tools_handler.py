@@ -113,7 +113,7 @@ def _ejecutar_mock(nombre, argumentos):
             return {"demo": True, "ok": False, "status": 404, "error": "No existe una película con ese id."}
         p = _CATALOGO_DEMO[pid]
         return {"demo": True, "id": pid, "titulo": p["titulo"], "plataformas": p["plataformas"],
-                "fecha": "2026-11-15"}
+                "fecha": "2026-11-15", "avisos": []}
 
     if nombre == "registrar_vista":
         pid = _id(argumentos)

@@ -1,0 +1,5 @@
+{
+  "rawPath": "/registrar_vista",
+  "body": "{\"id\": 1, \"estado\": \"no_me_interesa\"}",
+  "requestContext": {"http": {"method": "POST"}}
+}

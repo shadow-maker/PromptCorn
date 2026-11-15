@@ -89,13 +89,13 @@ El paquete `data/compartir/promptcorn_datos_<fecha>.zip` (no versionado) se comp
 
 No se comparten: `calificaciones` (solo las usa el modelo de ML, de A), `_interno/ids_externos.csv` (detalle interno de las herramientas de A) ni los datos crudos.
 
-## Uso en AWS (propuesta, aún no conectado)
+## Uso en AWS
 
 | Data | Dónde | Quién la usa |
 |---|---|---|
 | `calificaciones` | Ningún lado: solo para entrenar offline | Script de entrenamiento |
 | Catálogo + vectores del modelo | S3 (JSON + `.npy`), cargados en memoria al arrancar | Lambda de ML `/recomendar` (filtra y rankea) |
-| Catálogo | DynamoDB `Peliculas` (PK `id`), consulta por llave | Herramientas del chat (detalle, registrar vista) |
+| Catálogo completo + `ids_externos` | S3 (`catalogo/`), cargado en memoria por la Lambda de herramientas | `buscar_pelicula`, `ver_donde_ver`, `registrar_vista` |
 | Datos del usuario | DynamoDB `Conversaciones`, `Perfil`, `Vistas`, `Recomendaciones` | Lambda del chat |
 
 La búsqueda por nombre ("ya vi Interstellar") se hace en vivo contra la API externa (tolera errores de tipeo, títulos en español y estrenos recientes) y se traduce a nuestro `id` con `ids_externos`. La disponibilidad del snapshot sirve para filtrar; la de las 3 recomendaciones finales se confirma en vivo.

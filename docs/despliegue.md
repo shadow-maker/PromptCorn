@@ -20,8 +20,9 @@ tools/recomendar/empaquetar.sh                    # arma dist/
 | `promptcorn-tools-recomendar.zip` | Código de la Lambda |
 
 ### 1. S3: artefactos del modelo
+Un solo bucket para los datos del backend: `modelo/` (este paso) y `catalogo/` (Lambda de herramientas).
 1. S3 → **Create bucket**.
-   - Nombre: `promptcorn-tools-modelo-<sufijo>`. Los nombres de bucket son únicos en todo AWS; usa por ejemplo tus iniciales y un número.
+   - Nombre: `promptcorn-tools-datos-<sufijo>`. Los nombres de bucket son únicos en todo AWS; usa por ejemplo tus iniciales y un número.
    - Región us-east-1.
    - Deja activado **Block all public access**.
 2. Entra al bucket → **Create folder** `modelo`.
@@ -57,7 +58,7 @@ Lambda → **Layers** → **Create layer**:
 
 | Variable | Valor |
 |---|---|
-| `BUCKET_ARTEFACTOS` | `promptcorn-tools-modelo-<sufijo>` |
+| `BUCKET_ARTEFACTOS` | `promptcorn-tools-datos-<sufijo>` |
 | `PREFIJO_ARTEFACTOS` | `modelo/` |
 | `TABLA_VISTAS` | `promptcorn-tools-vistas` |
 | `TABLA_PERFIL` | `promptcorn-tools-perfil` |
@@ -99,9 +100,70 @@ Esa URL (+ `/recomendar`) es la que la Persona B pone en la variable de entorno 
 - **Nuevo modelo:** corre `ml/entrenar.py` y `empaquetar.sh`, y vuelve a subir los 3 archivos a `modelo/`. Las instancias de Lambda que ya están corriendo guardan el modelo anterior en memoria. Para forzar la recarga, cambia cualquier variable de entorno (por ejemplo, agrega `VERSION_MODELO` con la fecha).
 - **Nuevo código:** corre `empaquetar.sh` y sube de nuevo `promptcorn-tools-recomendar.zip` (Code → Upload from).
 
+## Herramientas (`buscar_pelicula`, `ver_donde_ver`, `registrar_vista`, `guardar_plataformas`, `obtener_historial`)
+
+Una sola Lambda para las 5 herramientas. Usa las mismas tablas y el mismo bucket que `recomendar`. No necesita layer, porque solo usa la librería estándar y boto3, que ya viene en el runtime.
+
+### 0. Preparar (local)
+```bash
+tools/herramientas/empaquetar.sh   # -> dist/promptcorn-tools-herramientas.zip y dist/catalogo/
+```
+
+### 1. Catálogo en S3
+En el bucket `promptcorn-tools-datos-<sufijo>`: **Create folder** `catalogo` → **Upload** `catalogo.json` e `ids_externos.json` de `dist/catalogo/`.
+
+### 2. Token de la API de metadatos en SSM
+Systems Manager → **Parameter Store → Create parameter**:
+- Nombre `/promptcorn/tmdb_token`.
+- Tipo **SecureString**.
+- Valor: el token de lectura (el mismo que se usó para descargar los datos).
+
+Si SSM no está disponible en Learner Lab, usa la variable `TMDB_TOKEN` de la Lambda. Nunca en el repo.
+
+### 3. Función Lambda
+1. **Create function:**
+   - Nombre `promptcorn-tools-herramientas`.
+   - Runtime Python 3.14 (o 3.13).
+   - Arquitectura x86_64.
+   - Rol **`LabRole`**.
+2. **Upload from .zip** → `dist/promptcorn-tools-herramientas.zip`. Handler: `handler.lambda_handler`.
+3. **General configuration:** Memory **256 MB**, Timeout **15 s**.
+4. **Environment variables:**
+
+| Variable | Valor |
+|---|---|
+| `BUCKET_CATALOGO` | `promptcorn-tools-datos-<sufijo>` |
+| `PREFIJO_CATALOGO` | `catalogo/` |
+| `TMDB_TOKEN_PARAM` | `/promptcorn/tmdb_token` |
+| `TABLA_VISTAS` | `promptcorn-tools-vistas` |
+| `TABLA_PERFIL` | `promptcorn-tools-perfil` |
+| `TABLA_RECOMENDACIONES` | `promptcorn-tools-recomendaciones` |
+| `USUARIO_ID` | `usuario-demo` (el mismo que en `recomendar`) |
+
+### 4. Probar en la consola
+**Test** con cada archivo de `tools/herramientas/eventos/`:
+
+| Evento | Esperado |
+|---|---|
+| `01_buscar.json` | Interestelar (`id` 8318, `en_catalogo: true`) primero |
+| `02_buscar_fuera_de_catalogo.json` | Oppenheimer con `id: null`, `en_catalogo: false` |
+| `03_donde_ver.json` | Plataformas de hoy y `avisos: []`. Si trae un aviso, la API externa no respondió: revisa el token o SSM |
+| `04_guardar_plataformas.json` | `["Netflix", "Prime Video", "HBO Max"]` |
+| `05_registrar_vista.json` | `ok: true`, nota 5. Después, `recomendar` pasa a `modo: perfil` |
+| `06_historial.json` | La vista registrada y lo que haya recomendado `recomendar` |
+| `07_via_api_gateway.json` | `statusCode: 200` (Toy Story como `no_me_interesa`) |
+
+### 5. Rutas en la API
+En `promptcorn-tools-api` → **Routes → Create**: **POST** `/{herramienta}` → integración Lambda `promptcorn-tools-herramientas`. Con una sola ruta alcanzan las 5 herramientas. `POST /recomendar` es más específica y sigue yendo a su Lambda.
+
+```bash
+curl -s -X POST "<invoke-url>/buscar_pelicula" -H 'Content-Type: application/json' -d '{"titulo": "Interstellar"}'
+```
+
 ### Notas de Learner Lab
 - Los recursos persisten entre sesiones, pero solo responden mientras el lab está iniciado.
 - Si algo responde `AccessDenied`, revisa que la función use `LabRole`.
+- Las Lambdas sin VPC tienen salida a internet: `buscar_pelicula` y `ver_donde_ver` consultan la API externa directamente.
 
 ## Chat (Persona B)
 
