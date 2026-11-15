@@ -270,6 +270,29 @@
   margin-top: 18px;
 }
 
+.credits {
+  margin: 10px auto 24px;
+  max-width: 640px;
+  padding: 0 16px;
+  text-align: center;
+  color: #6b7285;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.credits p {
+  margin: 2px 0;
+}
+
+.credits a {
+  color: #8f97ab;
+  text-decoration: underline;
+}
+
+.credits a:hover {
+  color: #c3c9d6;
+}
+
 @media (max-width: 600px) {
   .topbar {
     padding: 0 4%;

@@ -220,6 +220,21 @@ function App() {
         <p className="privacy-note">
           Tus conversaciones se identifican mediante un usuario de sesión.
         </p>
+
+        <footer className="credits">
+          <p>
+            Datos de películas:{" "}
+            <a href="https://www.themoviedb.org/" target="_blank" rel="noreferrer">TMDB</a>
+            {" · "}Disponibilidad en plataformas:{" "}
+            <a href="https://www.justwatch.com/" target="_blank" rel="noreferrer">JustWatch</a>
+            {" · "}Calificaciones:{" "}
+            <a href="https://grouplens.org/datasets/movielens/" target="_blank" rel="noreferrer">MovieLens</a>{" "}
+            (Harper y Konstan, 2015)
+          </p>
+          <p>
+            Este producto usa la API de TMDB pero no está respaldado ni certificado por TMDB.
+          </p>
+        </footer>
       </section>
     </main>
   );
