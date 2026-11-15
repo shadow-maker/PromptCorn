@@ -18,6 +18,10 @@ class RateLimitError(Exception):
     """Mismo nombre que la excepción de la librería groq."""
 
 
+class BadRequestError(Exception):
+    """Mismo nombre que la excepción de la librería groq."""
+
+
 class FakeMensaje:
     def __init__(self, content=None, tool_calls=None):
         self.content = content
@@ -99,6 +103,25 @@ class TestLimites(unittest.TestCase):
         self.assertEqual(r["statusCode"], 200)
         self.assertIn("tardando", json.loads(r["body"])["respuesta"])
         self.assertEqual(mock_groq.call_count, 1)
+
+    @patch("lambda_function.guardar_mensaje")
+    @patch("lambda_function.obtener_conversacion", return_value=[])
+    @patch("lambda_function.consultar_groq")
+    def test_reintenta_tool_use_failed(self, mock_groq, *_):
+        mock_groq.side_effect = [BadRequestError("Error code: 400 - tool_use_failed"), FakeMensaje(content="ok")]
+        r = lambda_handler(evento("vi iron man"), None)
+        self.assertEqual(json.loads(r["body"])["respuesta"], "ok")
+        self.assertEqual(mock_groq.call_count, 2)
+
+    @patch("lambda_function.guardar_mensaje")
+    @patch("lambda_function.obtener_conversacion", return_value=[])
+    @patch("lambda_function.consultar_groq", side_effect=ValueError("algo raro"))
+    def test_detalle_del_error_solo_con_depurar(self, *_):
+        r = lambda_handler(evento("hola"), None)
+        self.assertNotIn("detalle", json.loads(r["body"]))
+        r = lambda_handler({"body": json.dumps({"usuario_id": "u1", "mensaje": "hola", "depurar": True})}, None)
+        self.assertEqual(r["statusCode"], 500)
+        self.assertIn("ValueError: algo raro", json.loads(r["body"])["detalle"])
 
 
 if __name__ == "__main__":

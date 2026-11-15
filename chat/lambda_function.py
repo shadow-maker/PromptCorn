@@ -130,6 +130,26 @@ def para_llm(valor):
     return valor
 
 
+def consultar_con_reintento(messages, traza, intentos=3):
+    """
+    Los modelos gpt-oss a veces generan una llamada a herramienta mal
+    formada y Groq responde 400 "tool_use_failed". Suele salir bien al
+    reintentar, así que se reintenta antes de dar el error.
+    """
+    for intento in range(intentos):
+        try:
+            return consultar_groq(messages, tools=TOOLS)
+        except Exception as error:
+            reintentable = (
+                type(error).__name__ == "BadRequestError"
+                and "tool_use_failed" in str(error)
+            )
+            if not reintentable or intento == intentos - 1:
+                raise
+            traza.append({"paso": "reintento_groq", "motivo": "tool_use_failed"})
+            print(json.dumps({"tipo": "reintento_groq", "detalle": str(error)[:500]}, ensure_ascii=False))
+
+
 # ============================================================
 # PROCESAMIENTO DEL MENSAJE CONVERSACIONAL
 # ============================================================
@@ -187,10 +207,7 @@ def procesar_mensaje(usuario_id, mensaje, traza=None):
             guardar_mensaje(usuario_id, "assistant", mensaje_lento)
             return mensaje_lento
 
-        respuesta = consultar_groq(
-            messages,
-            tools=TOOLS
-        )
+        respuesta = consultar_con_reintento(messages, traza)
 
         traza.append({
             "paso": "groq",
@@ -320,6 +337,7 @@ def lambda_handler(event, context):
     }
 
     usuario_id = None
+    body_recibido = None
 
     try:
 
@@ -345,6 +363,8 @@ def lambda_handler(event, context):
         # API Gateway puede entregar el body como texto JSON.
         if isinstance(body, str):
             body = json.loads(body)
+
+        body_recibido = body
 
         # Validar que el cuerpo sea un objeto.
         if not isinstance(body, dict):
@@ -441,10 +461,13 @@ def lambda_handler(event, context):
                 }, ensure_ascii=False)
             }
 
+        cuerpo_error = {"error": "Error interno del servidor."}
+        # Con "depurar": true se devuelve el detalle (pruebas sin acceso a CloudWatch).
+        if isinstance(body_recibido, dict) and body_recibido.get("depurar"):
+            cuerpo_error["detalle"] = f"{type(error).__name__}: {str(error)[:800]}"
+
         return {
             "statusCode": 500,
             "headers": headers,
-            "body": json.dumps({
-                "error": "Error interno del servidor."
-            }, ensure_ascii=False)
+            "body": json.dumps(cuerpo_error, ensure_ascii=False)
         }
