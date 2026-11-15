@@ -81,6 +81,7 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - [ ] Ensayo y exposición (miércoles 18, 19h).
 
 ## Decisiones abiertas
+- Ninguna por ahora.
 
 ## Decisiones tomadas
 - Artefactos del modelo (vectores + catálogo del modelo) en **S3**; la Lambda los carga al arrancar.
