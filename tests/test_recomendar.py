@@ -135,6 +135,13 @@ class TestHandler(unittest.TestCase):
         self.assertEqual(r["modo"], "arranque_en_frio")
         self.assertTrue(any("plataformas guardadas" in a for a in r["avisos"]))
 
+    def test_repetir_incluye_lo_recomendado_hace_poco(self):
+        al = AlmacenMemoria(recomendaciones=[{"sk": "2026-11-15T10:00:00Z#4", "pelicula_id": 4}])
+        r = handler.recomendar({"cantidad": 5, "guardar": False, "repetir": True}, al, self.AHORA)
+        self.assertIn(4, [x["id"] for x in r["recomendaciones"]])
+        with self.assertRaises(handler.ErrorEntrada):
+            handler.recomendar({"repetir": "si"}, al, self.AHORA)
+
     def test_vista_sin_nota_solo_se_excluye(self):
         al = AlmacenMemoria(vistas=[{"pelicula_id": 4, "estado": "visto"}])
         r = handler.recomendar({"cantidad": 5, "guardar": False}, al, self.AHORA)

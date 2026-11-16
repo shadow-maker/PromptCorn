@@ -32,6 +32,7 @@ Todo cuelga de una sola HTTP API (definida en `serverless.yml`): `POST /chat`, `
 | `parecido_a` | int | `id` de una película: modo "parecidas a X" |
 | `orden` | `"relevancia"` \| `"reciente"` | Por defecto `relevancia`. `reciente`: de las 30 más afines, las de estreno más nuevo primero ("lo más reciente que me guste") |
 | `excluir` | list[int] | Ids que no deben salir (además de los que se excluyen solos) |
+| `repetir` | bool | Por defecto `false`. `true`: no excluye lo recomendado en las últimas 24 h (para afinar el pedido anterior: "solo una, la más reciente") |
 | `guardar` | bool | Guardar en `Recomendaciones` (por defecto `true`; `false` para pruebas) |
 | `usuario_id` | str | Solo en invocación directa (pruebas). Por API Gateway se ignora: siempre es el usuario fijo de la app (`USUARIO_ID`), porque la API no tiene autenticación |
 

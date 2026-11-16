@@ -50,7 +50,7 @@ paths:
                 depurar: { type: boolean, default: false, description: "true devuelve la traza (llamadas a Groq y herramientas con argumentos y resultado)" }
             examples:
               comedia: { summary: Recomendación con filtros, value: { usuario_id: prueba-swagger, mensaje: Recomiéndame una comedia corta } }
-              donde_ver: { summary: Disponibilidad, value: { usuario_id: prueba-swagger, mensaje: ¿Dónde puedo ver Matrix? } }
+              donde_ver: { summary: Disponibilidad, value: { usuario_id: prueba-swagger, mensaje: "¿Dónde puedo ver Matrix?" } }
               registrar: { summary: Registrar con nota, value: { usuario_id: prueba-swagger, mensaje: "Vi Interstellar y me encantó, le pongo 5" } }
               depurar: { summary: Con traza de herramientas, value: { usuario_id: prueba-swagger, mensaje: Recomiéndame algo de acción reciente, depurar: true } }
       responses:
@@ -378,6 +378,7 @@ components:
         parecido_a: { type: integer, description: id de una película (modo "parecidas a X") }
         orden: { type: string, enum: [relevancia, reciente], default: relevancia, description: "reciente = de las 30 más afines, las de estreno más nuevo primero" }
         excluir: { type: array, items: { type: integer } }
+        repetir: { type: boolean, default: false, description: "true = no excluye lo recomendado en las últimas 24 h (afinar el pedido anterior)" }
         guardar: { type: boolean, default: true, description: false para probar sin escribir en Recomendaciones }
     RecomendarResponse:
       type: object

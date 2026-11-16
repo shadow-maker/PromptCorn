@@ -68,7 +68,7 @@ TOOLS = [
         "recomendar",
         "Recomienda películas con el modelo de ML. Ya conoce notas, vistas y "
         "plataformas del usuario; pasa solo los filtros pedidos. No repite lo "
-        "recomendado en 24 h.",
+        "recomendado en 24 h (salvo repetir true).",
         {
             "cantidad": {"type": "integer", "minimum": 1, "maximum": CANTIDAD_MAX,
                          "description": "Por defecto 3."},
@@ -83,7 +83,10 @@ TOOLS = [
                            "description": "id de una película para recomendar parecidas."},
             "orden": {"type": "string", "enum": ["relevancia", "reciente"],
                       "description": "reciente = las más nuevas entre las afines."},
-            "excluir": {"type": "array", "items": {"type": "integer"}}
+            "excluir": {"type": "array", "items": {"type": "integer"}},
+            "repetir": {"type": "boolean",
+                        "description": "true al afinar el pedido anterior (solo una, la más reciente de esas): "
+                                       "puede volver a dar lo ya recomendado. No usar para 'otras opciones'."}
         }
     ),
     _herramienta(

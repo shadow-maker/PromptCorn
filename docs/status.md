@@ -40,15 +40,15 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - [x] Lambda `/recomendar`: `handler.py` (artefactos de S3; lee `Vistas`, `Perfil` y `Recomendaciones`; guarda lo entregado), pruebas, `empaquetar.sh` (zip + layer de numpy) y eventos de prueba.
 - [x] Contrato de `recomendar` y esquema de las tablas ([contratos.md](contratos.md)).
 - [x] Infraestructura como código: `serverless.yml` (Serverless Framework v4.46) + `despliegue/desplegar.sh`.
-- [ ] (A+B) Desplegar en Learner Lab siguiendo [despliegue.md](despliegue.md): org en `serverless.yml`, datos a S3, EC2 de despliegue y `desplegar.sh`.
-- [ ] Pasarle a B la URL de `/recomendar` y el contrato.
+- [x] (A+B) Desplegado en Learner Lab con `desplegar.sh` desde la EC2 (API `https://z9q76fvtcg.execute-api.us-east-1.amazonaws.com`).
+- [x] Pasarle a B la URL de `/recomendar` y el contrato.
 
 ## Etapa 2: Tablas y herramientas (A)
 - [x] Esquema de las tablas `Vistas`, `Perfil`, `Recomendaciones` ([contratos.md](contratos.md)).
 - [x] Lambda `promptcorn-tools-herramientas` (`tools/herramientas/`): `buscar_pelicula` (en vivo, tolera tipeo, `en_catalogo`), `ver_donde_ver` (en vivo con respaldo al snapshot), `registrar_vista`, `guardar_plataformas` (normaliza nombres), `obtener_historial`. Incluye 20 pruebas, eventos y `empaquetar.sh`.
 - [x] Catálogo completo para S3 (`scripts/exportar_catalogo.py`, 6.1 MB) en lugar de una tabla `Peliculas`.
-- [ ] (A+B) Desplegar (incluido en la guía de [despliegue.md](despliegue.md)).
-- [ ] Probar el flujo completo con el chat real: `MOCK_MODE=false` y `API_TOOLS_URL`.
+- [x] (A+B) Desplegado (mismo `serverless.yml`).
+- [x] Probar el flujo completo con el chat real: `MOCK_MODE=false` y `API_TOOLS_URL`.
 - [x] Especificación OpenAPI (`docs/openapi.yaml`) y documentación interactiva (Swagger UI en `<sitio>/docs/`).
 - [ ] Colección de Postman con evidencia de cada herramienta (importar `openapi.yaml` publicado en `<sitio>/docs/openapi.yaml`).
 
@@ -56,14 +56,16 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - [x] Prompt del sistema, tool calling con Groq (hasta 5 vueltas), memoria en `Conversaciones`, errores de herramientas devueltos al LLM.
 - [x] Simulaciones con el formato del contrato (`MOCK_MODE=true`); modo real con una sola URL base (`API_TOOLS_URL`).
 - [x] Integrado a `main` y alineado al contrato (definiciones de herramientas, prompt, key de Groq desde variable de entorno o SSM).
-- [ ] Desplegar la Lambda del chat y su API (incluido en la guía de [despliegue.md](despliegue.md)).
-- [ ] Probar con Groq real (modelo por defecto `openai/gpt-oss-20b`).
+- [x] Lambda del chat desplegada (`POST /chat`).
+- [x] Probado con Groq real (`openai/gpt-oss-120b`; el 20b inventaba títulos). Reintento de `tool_use_failed`, parámetros opcionales con null, presupuesto de 16 s y mensaje amable ante el límite de tokens.
+- [x] Tope de 5 recomendaciones por pedido; `repetir` para afinar el pedido anterior ("solo una, la más reciente") sin excluir lo ya mostrado.
+- [ ] Antes de la demo: `DEPURAR: "0"` en `serverless.yml`, desplegar y "Reiniciar perfil".
 
 ## Etapa 4: Frontend (B)
 - [x] Prototipo en `/frontend` (React + Vite), en modo demostración si no hay `VITE_API_URL`.
-- [ ] Conectar con la API del chat.
-- [ ] Hosting en S3 + CloudFront o Amplify.
-- [ ] Créditos en la interfaz: TMDB, JustWatch y MovieLens (obligatorio por licencia; aún no están).
+- [x] Conectado con la API del chat (Markdown en las respuestas, pósters de las recomendaciones lado a lado, botón "Reiniciar perfil" con confirmación).
+- [x] Hosting en S3 (sitio estático, lo crea `serverless.yml`).
+- [x] Créditos en la interfaz: TMDB, JustWatch y MovieLens (footer).
 
 ## Etapa 5: Integración y pruebas (A+B)
 - [ ] (A) Escenarios Gherkin HU1–HU4.

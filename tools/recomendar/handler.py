@@ -173,6 +173,9 @@ def recomendar(body: dict, almacen, ahora: datetime | None = None) -> dict:
     excluir = body.get("excluir") or []
     if not isinstance(excluir, list) or not all(isinstance(x, int) and not isinstance(x, bool) for x in excluir):
         raise ErrorEntrada("'excluir' debe ser una lista de ids (enteros).")
+    repetir = body.get("repetir") or False  # true: puede volver a dar lo recomendado hace poco (afinar un pedido)
+    if not isinstance(repetir, bool):
+        raise ErrorEntrada("'repetir' debe ser true o false.")
 
     # Datos del usuario
     vistas = almacen.vistas_de(usuario)
@@ -181,7 +184,7 @@ def recomendar(body: dict, almacen, ahora: datetime | None = None) -> dict:
     descartadas = [v["pelicula_id"] for v in vistas if v.get("estado") == "no_me_interesa"]
     vistas_sin_nota = [v["pelicula_id"] for v in vistas if v.get("estado") == "visto" and v.get("calificacion") is None]
     desde = (ahora - timedelta(hours=HORAS_SIN_REPETIR)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    recientes = almacen.recomendadas_desde(usuario, desde)
+    recientes = [] if repetir else almacen.recomendadas_desde(usuario, desde)
 
     avisos = []
     if body.get("plataformas") is not None:  # otras plataformas solo para esta consulta ([] = cualquiera; null = las del perfil)

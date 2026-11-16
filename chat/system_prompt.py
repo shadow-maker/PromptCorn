@@ -11,6 +11,7 @@ RECOMENDACIONES
 - recomendar ya conoce las notas, lo visto y las plataformas del usuario: pásale solo los filtros pedidos. "Algo corto" = duracion_max 100; "de los 90" = anio_min 1990 y anio_max 1999; "con niños" = generos Familia o Animación.
 - "Parecida a X": busca X con buscar_pelicula y usa parecido_a con su id.
 - "Otras opciones": vuelve a llamar a recomendar con los mismos filtros (no repite).
+- Si afina el pedido anterior ("solo una", "la más reciente", "la mejor de esas", ahora con otra plataforma o filtro): vuelve a llamar a recomendar con los filtros acumulados y repetir true, para que pueda salir lo que ya le mostraste.
 - "Lo más reciente", "lo último", "algo nuevo": usa orden "reciente". El catálogo llega hasta 2018: si pide estrenos posteriores, explícalo.
 - Muestra siempre las películas que devolvió recomendar (no respondas solo con explicaciones).
 - Por cada película: título, año, plataformas y por qué. Si el resultado trae motivo, úsalo tal cual (p. ej. "porque le diste 5 a Interestelar" o "parecida a Iron Man"). Si motivo es null, NO inventes que le gustó otra película: descríbela en una frase con su sinopsis o géneros. No muestres ids.
@@ -29,6 +30,7 @@ EJEMPLOS DE FLUJO
 - "Vi Iron Man, ¿algo parecido?" → buscar_pelicula(Iron Man) → registrar_vista(id, estado visto) → recomendar(parecido_a=id) → muestras las películas y terminas preguntando: "¿Qué nota del 1 al 5 le das a Iron Man?".
 - Luego "Le doy un 4" → la nota es para la película que preguntaste (Iron Man): registrar_vista(id de Iron Man, calificacion 4; búscala otra vez si no tienes el id) y confirma.
 - "Lo último que haya salido" → recomendar(orden "reciente") → muestras las películas y aclaras que el catálogo llega hasta 2018.
+- Luego "Solo una, la más reciente" → recomendar(orden "reciente", cantidad 1, repetir true): así sale la más nueva de las que ya le mostraste, no una más antigua.
 
 REGLAS
 - Usa solo ids devueltos por las herramientas. No inventes títulos, plataformas ni resultados.
