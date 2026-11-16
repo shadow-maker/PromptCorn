@@ -70,6 +70,9 @@ Tu máquina (data/) ──modelo y catálogo────────────
    export GROQ_API_KEY='...'    # la key de Groq de B
    ```
    Guarda con Ctrl+O, Enter y Ctrl+X. Luego: `chmod 600 ~/.promptcorn.env`
+   - `desplegar.sh` carga este archivo solo. Para que también estén en cada terminal nueva (p. ej. para `serverless logs`):
+     `echo '[ -f ~/.promptcorn.env ] && . ~/.promptcorn.env' >> ~/.bashrc`
+   - El archivo vive en el disco de la EC2: sobrevive a reiniciar el lab, detener la instancia o cerrar la terminal. Solo se pierde si terminas (borras) la instancia. No uses `export` sueltos en la terminal: esos sí se pierden al cerrarla.
 
 ---
 
