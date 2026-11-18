@@ -80,6 +80,7 @@ backend() {
     falla "pon el nombre de tu org de serverless.com en 'org:' de serverless.yml (y haz commit)"
   [ -n "${TMDB_TOKEN:-}" ] || falla "falta TMDB_TOKEN en el entorno (ver ~/.promptcorn.env en docs/despliegue.md)"
   [ -n "${GROQ_API_KEY:-}" ] || falla "falta GROQ_API_KEY en el entorno (ver ~/.promptcorn.env en docs/despliegue.md)"
+  if [ -n "${GROQ_API_KEY_2:-}" ]; then echo "Groq: 2 cuentas (GROQ_API_KEY_2 presente)"; else echo "Groq: 1 cuenta"; fi
   command -v serverless >/dev/null || falla "falta Serverless Framework: npm install -g serverless@4.46.0"
   titulo "serverless deploy"
   (cd "$RAIZ" && serverless deploy)

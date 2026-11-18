@@ -4,7 +4,7 @@ import os
 import time
 import traceback
 
-from groq_client import consultar_groq
+from groq_client import consultar_groq, nuevo_turno
 from system_prompt import SYSTEM_PROMPT
 from conversation_memory import obtener_conversacion, guardar_mensaje
 from tools_handler import ejecutar_herramienta
@@ -244,6 +244,9 @@ def procesar_mensaje(usuario_id, mensaje, traza=None, peliculas=None):
 
     # Guardar el mensaje del usuario.
     guardar_mensaje(usuario_id, "user", mensaje)
+
+    # Cuenta de Groq de este mensaje (si hay dos keys, se alternan).
+    traza.append({"paso": "cuenta_groq", "cuenta": nuevo_turno()})
 
     # Máximo de iteraciones para evitar ciclos infinitos.
     max_intentos = 5

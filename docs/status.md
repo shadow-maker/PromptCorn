@@ -59,6 +59,8 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - [x] Lambda del chat desplegada (`POST /chat`).
 - [x] Probado con Groq real (`openai/gpt-oss-120b`; el 20b inventaba títulos). Reintento de `tool_use_failed`, parámetros opcionales con null, presupuesto de 16 s y mensaje amable ante el límite de tokens.
 - [x] Tope de 5 recomendaciones por pedido; `repetir` para afinar el pedido anterior ("solo una, la más reciente") sin excluir lo ya mostrado.
+- [x] Segunda cuenta de Groq opcional (`GROQ_API_KEY_2`): los mensajes se alternan entre cuentas y, si una llega al límite, el mensaje sigue con la otra (`GROQ_ROTACION=alternar|respaldo`).
+- [x] Prompt alineado a las HU: pide plataformas si no las conoce (HU1), ante un pedido vago pregunta género/ánimo/tiempo en una sola pregunta y da sinopsis breve (HU2), ofrece géneros si no entiende (HU7).
 - [ ] Antes de la demo: `DEPURAR: "0"` en `serverless.yml`, desplegar y "Reiniciar perfil".
 
 ## Etapa 4: Frontend (B)

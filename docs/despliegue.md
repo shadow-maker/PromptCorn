@@ -68,6 +68,7 @@ Tu máquina (data/) ──modelo y catálogo────────────
    ```bash
    export TMDB_TOKEN='...'      # en tu Mac: pbcopy < ~/.config/promptcorn/tmdb_token, y pegar aquí
    export GROQ_API_KEY='...'    # la key de Groq de B
+   export GROQ_API_KEY_2='...'  # opcional: key de una segunda cuenta de Groq (se alternan por mensaje)
    ```
    Guarda con Ctrl+O, Enter y Ctrl+X. Luego: `chmod 600 ~/.promptcorn.env`
    - `desplegar.sh` carga este archivo solo. Para que también estén en cada terminal nueva (p. ej. para `serverless logs`):

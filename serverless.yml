@@ -107,6 +107,8 @@ functions:
     environment:
       CONVERSATIONS_TABLE: ${param:tablaConversaciones}
       GROQ_API_KEY: ${env:GROQ_API_KEY}
+      GROQ_API_KEY_2: ${env:GROQ_API_KEY_2, ''}   # opcional: segunda cuenta de Groq (se alternan por mensaje)
+      GROQ_ROTACION: alternar        # o "respaldo": la 2.ª solo cuando la 1.ª llega al límite
       GROQ_MODEL: ${param:groqModel}
       MOCK_MODE: "false"
       DEPURAR: "1"                 # traza y detalle de errores con "depurar": true; poner "0" antes de la demo
