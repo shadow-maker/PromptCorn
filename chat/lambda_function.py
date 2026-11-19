@@ -67,8 +67,8 @@ TOOLS = [
     _herramienta(
         "recomendar",
         "Recomienda películas con el modelo de ML. Ya conoce notas, vistas y "
-        "plataformas del usuario; pasa solo los filtros pedidos. No repite lo "
-        "recomendado en 24 h (salvo repetir true).",
+        "plataformas del usuario; pasa solo los filtros pedidos. Nunca devuelve "
+        "lo que ya vio. No repite lo recomendado en 24 h (salvo repetir true).",
         {
             "cantidad": {"type": "integer", "minimum": 1, "maximum": CANTIDAD_MAX,
                          "description": "Por defecto 3."},
@@ -155,6 +155,25 @@ def para_llm(valor):
     if isinstance(valor, list):
         return [para_llm(v) for v in valor]
     return valor
+
+
+def anotar_recomendaciones(resultado):
+    """Le recuerda al LLM, junto al resultado, que muestre solo estas películas.
+
+    recomendar ya excluye lo que el usuario vio, pero el LLM a veces completaba
+    la lista con títulos de turnos anteriores (p. ej. la película que el usuario
+    ya vio y calificó).
+    """
+    if not isinstance(resultado, dict) or not isinstance(resultado.get("recomendaciones"), list):
+        return resultado
+    n = len(resultado["recomendaciones"])
+    resultado["instruccion"] = (
+        f"Muestra estas {n} películas y ninguna más: no agregues títulos de turnos "
+        "anteriores ni películas que el usuario ya vio."
+        if n else
+        "No hay películas: no sugieras otras por tu cuenta; explica el aviso."
+    )
+    return resultado
 
 
 def peliculas_para_frontend(recomendaciones):
@@ -341,8 +360,12 @@ def procesar_mensaje(usuario_id, mensaje, traza=None, peliculas=None):
                 ):
                     peliculas[:] = peliculas_para_frontend(resultado["recomendaciones"])
 
+                resultado_llm = para_llm(resultado)
+                if nombre_herramienta == "recomendar":
+                    anotar_recomendaciones(resultado_llm)
+
                 contenido_resultado = json.dumps(
-                    para_llm(resultado),
+                    resultado_llm,
                     ensure_ascii=False
                 )
 

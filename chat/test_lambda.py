@@ -310,6 +310,64 @@ class TestLambda(unittest.TestCase):
 
 
     # ------------------------------------------------------
+    # PRUEBA 4b: RECOMENDAR LLEGA AL LLM CON "SOLO ESTAS"
+    # ------------------------------------------------------
+
+    @patch("lambda_function.ejecutar_herramienta")
+    @patch("lambda_function.guardar_mensaje")
+    @patch("lambda_function.obtener_conversacion")
+    @patch("lambda_function.consultar_groq")
+    def test_recomendar_instruye_mostrar_solo_esas(
+        self,
+        mock_groq,
+        mock_historial,
+        mock_guardar,
+        mock_ejecutor
+    ):
+
+        mock_historial.return_value = []
+
+        def turno(cantidad):
+            return FakeGroqMessage(content=None, tool_calls=[SimpleNamespace(
+                id="call_rec",
+                function=SimpleNamespace(
+                    name="recomendar",
+                    arguments=json.dumps({"orden": "reciente", "cantidad": cantidad})
+                )
+            )])
+
+        mock_groq.side_effect = [
+            turno(3), FakeGroqMessage(content="Iron Man 2 y Up."),
+            turno(3), FakeGroqMessage(content="Nada cumple."),
+        ]
+        mock_ejecutor.side_effect = [
+            {"modo": "perfil", "avisos": ["Solo 2 películas cumplen los filtros."],
+             "recomendaciones": [
+                 {"id": 1, "titulo": "Iron Man 2", "anio": 2010, "poster": "/a.jpg"},
+                 {"id": 2, "titulo": "Up", "anio": 2009, "poster": "/b.jpg"}]},
+            {"modo": "perfil", "avisos": [], "recomendaciones": []},
+        ]
+
+        def resultado_tool(llamada):
+            historial = mock_groq.call_args_list[llamada].args[0]
+            tool = [m for m in historial if m.get("role") == "tool"][-1]
+            return json.loads(tool["content"])
+
+        evento = {"body": {"usuario_id": "u", "mensaje": "Algo reciente"}}
+
+        lambda_handler(evento, None)
+        enviado = resultado_tool(1)
+        self.assertIn("Muestra estas 2 películas y ninguna más", enviado["instruccion"])
+        self.assertIn("ya vio", enviado["instruccion"])
+        self.assertNotIn("poster", enviado["recomendaciones"][0])
+
+        lambda_handler(evento, None)
+        self.assertIn("no sugieras otras", resultado_tool(3)["instruccion"])
+
+        print("\nPRUEBA 4b: recomendar instruye mostrar solo esas - OK")
+
+
+    # ------------------------------------------------------
     # PRUEBA 5: ERROR EN LA EJECUCION DE UNA HERRAMIENTA
     # ------------------------------------------------------
 
