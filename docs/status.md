@@ -62,6 +62,7 @@ Responsable: **A** = Persona A (datos, ML, herramientas, este repo) · **B** = P
 - [x] Segunda cuenta de Groq opcional (`GROQ_API_KEY_2`): los mensajes se alternan entre cuentas y, si una llega al límite, el mensaje sigue con la otra (`GROQ_ROTACION=alternar|respaldo`).
 - [x] Prompt alineado a las HU: pide plataformas si no las conoce (HU1), ante un pedido vago pregunta género/ánimo/tiempo en una sola pregunta y da sinopsis breve (HU2), ofrece géneros si no entiende (HU7).
 - [x] No recomendar lo ya visto (HU5): `recomendar` ya lo excluía, pero el LLM completaba la lista con títulos de turnos anteriores (p. ej. Iron Man ya calificada). Ahora cada resultado de `recomendar` llega al LLM con la instrucción de mostrar solo esas películas, y el prompt lo prohíbe salvo que pida volver a ver una.
+- [x] Prompt: la pregunta ante un pedido vago se hace una sola vez ("para mí", "algo reciente", "otras opciones" recomiendan directo) y las plataformas solo se piden si `recomendar` avisa que no hay guardadas (antes las volvía a pedir cuando salían de la ventana de 12 mensajes de memoria).
 - [ ] Antes de la demo: `DEPURAR: "0"` en `serverless.yml`, desplegar y "Reiniciar perfil".
 
 ## Etapa 4: Frontend (B)
